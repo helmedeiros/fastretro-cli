@@ -20,11 +20,29 @@ func (m Model) viewBrainstorm() string {
 		return styles.Subtitle.Render("No columns defined")
 	}
 
+	groupedCardIDs := m.groupedCardIDs()
+
 	var rendered []string
 	for i, col := range columns {
-		cards := m.cardsForColumn(col.id)
 		var lines []string
-		for _, c := range cards {
+
+		// Render groups in this column
+		for _, g := range m.groupsForColumn(col.id) {
+			groupLabel := styles.Selected.Render(fmt.Sprintf("  ┌ %s", g.Name))
+			lines = append(lines, groupLabel)
+			for _, cid := range g.CardIDs {
+				if card, ok := m.cardByID(cid); ok {
+					lines = append(lines, fmt.Sprintf("  │  %s", truncate(card.Text, 28)))
+				}
+			}
+			lines = append(lines, "  └──")
+		}
+
+		// Render ungrouped cards
+		for _, c := range m.cardsForColumn(col.id) {
+			if groupedCardIDs[c.ID] {
+				continue
+			}
 			text := truncate(c.Text, 32)
 			lines = append(lines, fmt.Sprintf("  • %s", text))
 		}
@@ -156,6 +174,44 @@ func (m Model) cardsForColumn(colID string) []protocol.Card {
 		}
 	}
 	return result
+}
+
+func (m Model) groupsForColumn(colID string) []protocol.Group {
+	if m.state == nil {
+		return nil
+	}
+	var result []protocol.Group
+	for _, g := range m.state.Groups {
+		if g.ColumnID == colID {
+			result = append(result, g)
+		}
+	}
+	return result
+}
+
+func (m Model) groupedCardIDs() map[string]bool {
+	ids := make(map[string]bool)
+	if m.state == nil {
+		return ids
+	}
+	for _, g := range m.state.Groups {
+		for _, cid := range g.CardIDs {
+			ids[cid] = true
+		}
+	}
+	return ids
+}
+
+func (m Model) cardByID(id string) (protocol.Card, bool) {
+	if m.state == nil {
+		return protocol.Card{}, false
+	}
+	for _, c := range m.state.Cards {
+		if c.ID == id {
+			return c, true
+		}
+	}
+	return protocol.Card{}, false
 }
 
 func truncate(s string, max int) string {
