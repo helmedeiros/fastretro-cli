@@ -168,6 +168,8 @@ func (m Model) View() string {
 
 	var body string
 	switch m.state.Stage {
+	case "icebreaker":
+		body = m.viewIcebreaker()
 	case "brainstorm", "group":
 		body = m.viewBrainstorm()
 	case "vote":
