@@ -73,6 +73,15 @@ func (c *Client) SendState(state *protocol.RetroState) error {
 	return c.Send(msg)
 }
 
+// RequestState asks other clients to send their state.
+func (c *Client) RequestState() error {
+	msg, err := protocol.RequestStateMessage()
+	if err != nil {
+		return err
+	}
+	return c.Send(msg)
+}
+
 // Close closes the WebSocket connection.
 func (c *Client) Close() error {
 	if c.conn != nil {

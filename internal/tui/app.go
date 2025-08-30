@@ -44,7 +44,19 @@ func NewModel(c *client.Client) Model {
 }
 
 func (m Model) Init() tea.Cmd {
-	return listenWS(m.client)
+	return tea.Batch(
+		listenWS(m.client),
+		requestState(m.client),
+	)
+}
+
+func requestState(c *client.Client) tea.Cmd {
+	return func() tea.Msg {
+		if c != nil {
+			c.RequestState()
+		}
+		return nil
+	}
 }
 
 func listenWS(c *client.Client) tea.Cmd {

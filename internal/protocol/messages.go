@@ -48,3 +48,10 @@ func ClaimIdentityMessage(participantID string) ([]byte, error) {
 		"participantId": participantID,
 	})
 }
+
+// RequestStateMessage asks other clients to broadcast their state.
+func RequestStateMessage() ([]byte, error) {
+	return json.Marshal(map[string]string{
+		"type": "request-state",
+	})
+}
