@@ -128,6 +128,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		switch m.state.Stage {
 		case "brainstorm":
 			return m.handleBrainstormKeys(msg)
+		case "group":
+			return m.handleGroupKeys(msg)
 		case "vote":
 			return m.handleVoteKeys(msg)
 		}
@@ -170,8 +172,10 @@ func (m Model) View() string {
 	switch m.state.Stage {
 	case "icebreaker":
 		body = m.viewIcebreaker()
-	case "brainstorm", "group":
+	case "brainstorm":
 		body = m.viewBrainstorm()
+	case "group":
+		body = m.viewGroup()
 	case "vote":
 		body = m.viewVote()
 	case "discuss":
