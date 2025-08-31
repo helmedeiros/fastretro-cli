@@ -5,60 +5,54 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/helmedeiros/fastretro-cli/internal/protocol"
 	"github.com/helmedeiros/fastretro-cli/internal/styles"
 )
 
-// groupItem is a flat list entry for cursor navigation.
+// groupItem is a flat list entry for cursor navigation within a column.
 type groupItem struct {
 	kind    string // "card", "group-header"
 	cardID  string
 	groupID string
 	label   string
 	grouped bool
-	colID   string
 }
 
-// flatGroupItems builds a flat navigable list of all cards and group headers.
-func (m Model) flatGroupItems() []groupItem {
+// columnGroupItems builds a flat navigable list for one column.
+func (m Model) columnGroupItems(colID string) []groupItem {
 	if m.state == nil {
 		return nil
 	}
 	var items []groupItem
 	grouped := m.groupedCardIDs()
 
-	for _, col := range m.getColumns() {
-		// Groups in this column
-		for _, g := range m.groupsForColumn(col.id) {
-			items = append(items, groupItem{
-				kind:    "group-header",
-				groupID: g.ID,
-				label:   fmt.Sprintf("%s (%d)", g.Name, len(g.CardIDs)),
-				colID:   col.id,
-			})
-			for _, cid := range g.CardIDs {
-				if card, ok := m.cardByID(cid); ok {
-					items = append(items, groupItem{
-						kind:    "card",
-						cardID:  cid,
-						groupID: g.ID,
-						label:   card.Text,
-						grouped: true,
-						colID:   col.id,
-					})
-				}
-			}
-		}
-		// Ungrouped cards in this column
-		for _, c := range m.cardsForColumn(col.id) {
-			if !grouped[c.ID] {
+	for _, g := range m.groupsForColumn(colID) {
+		items = append(items, groupItem{
+			kind:    "group-header",
+			groupID: g.ID,
+			label:   fmt.Sprintf("%s (%d)", g.Name, len(g.CardIDs)),
+		})
+		for _, cid := range g.CardIDs {
+			if card, ok := m.cardByID(cid); ok {
 				items = append(items, groupItem{
-					kind:   "card",
-					cardID: c.ID,
-					label:  c.Text,
-					colID:  col.id,
+					kind:    "card",
+					cardID:  cid,
+					groupID: g.ID,
+					label:   card.Text,
+					grouped: true,
 				})
 			}
+		}
+	}
+
+	for _, c := range m.cardsForColumn(colID) {
+		if !grouped[c.ID] {
+			items = append(items, groupItem{
+				kind:   "card",
+				cardID: c.ID,
+				label:  c.Text,
+			})
 		}
 	}
 	return items
@@ -69,81 +63,83 @@ func (m Model) viewGroup() string {
 		return ""
 	}
 
-	items := m.flatGroupItems()
-	if len(items) == 0 {
+	columns := m.getColumns()
+	if len(columns) == 0 {
 		return styles.Subtitle.Render("No cards to group")
 	}
 
-	var b strings.Builder
+	var rendered []string
+	for ci, col := range columns {
+		items := m.columnGroupItems(col.id)
+		isActive := ci == m.activeCol
 
-	currentCol := ""
-	for i, item := range items {
-		// Column header
-		if item.colID != currentCol {
-			if currentCol != "" {
-				b.WriteString("\n")
+		var lines []string
+		for i, item := range items {
+			cursor := "  "
+			if isActive && i == m.cursor {
+				cursor = "> "
 			}
-			currentCol = item.colID
-			b.WriteString(styles.Subtitle.Render(fmt.Sprintf("── %s ──", currentCol)))
-			b.WriteString("\n")
+
+			isMergeSource := item.kind == "card" && item.cardID == m.mergeSource
+
+			switch item.kind {
+			case "group-header":
+				line := fmt.Sprintf("%s┌ %s", cursor, item.label)
+				if isActive && i == m.cursor {
+					lines = append(lines, styles.Selected.Render(line))
+				} else {
+					lines = append(lines, styles.Selected.Render("  ┌ "+item.label))
+				}
+
+			case "card":
+				prefix := "• "
+				if item.grouped {
+					prefix = "│ "
+				}
+				text := truncate(item.label, 28)
+				line := fmt.Sprintf("%s%s%s", cursor, prefix, text)
+
+				if isMergeSource {
+					lines = append(lines, styles.VoteBadge.Render(line))
+				} else if isActive && i == m.cursor {
+					lines = append(lines, styles.Selected.Render(line))
+				} else {
+					lines = append(lines, fmt.Sprintf("  %s%s", prefix, text))
+				}
+			}
 		}
 
-		cursor := "  "
-		if i == m.cursor {
-			cursor = "> "
+		if len(lines) == 0 {
+			lines = append(lines, styles.Subtitle.Render("  (empty)"))
 		}
 
-		isMergeSource := item.kind == "card" && item.cardID == m.mergeSource
-
-		switch item.kind {
-		case "group-header":
-			line := fmt.Sprintf("%s┌ %s", cursor, item.label)
-			if i == m.cursor {
-				b.WriteString(styles.Selected.Render(line))
-			} else {
-				b.WriteString(styles.Selected.Render("  ┌ " + item.label))
-			}
-			b.WriteString("\n")
-
-		case "card":
-			prefix := "  "
-			if item.grouped {
-				prefix = "│ "
-			}
-			text := truncate(item.label, 38)
-			line := fmt.Sprintf("%s%s%s", cursor, prefix, text)
-
-			if isMergeSource {
-				b.WriteString(styles.VoteBadge.Render(line))
-			} else if i == m.cursor {
-				b.WriteString(styles.Selected.Render(line))
-			} else if item.grouped {
-				b.WriteString(fmt.Sprintf("  %s%s", prefix, text))
-			} else {
-				b.WriteString(fmt.Sprintf("  • %s", text))
-			}
-			b.WriteString("\n")
+		header := col.title
+		if isActive {
+			header = styles.Selected.Render("▶ " + header)
 		}
+
+		body := strings.Join(lines, "\n")
+		content := header + "\n" + body
+
+		style := styles.Column
+		if isActive {
+			style = style.BorderForeground(styles.Accent)
+		}
+		rendered = append(rendered, style.Render(content))
 	}
 
-	b.WriteString("\n")
+	board := lipgloss.JoinHorizontal(lipgloss.Top, rendered...)
 
-	// Rename input mode
+	var help string
 	if m.inputMode {
-		b.WriteString(fmt.Sprintf("  Rename: %s▌\n", m.inputText))
-		b.WriteString(styles.StatusBar.Render("[Enter] save  [Esc] cancel"))
+		help = fmt.Sprintf("Rename: %s▌  [Enter] save  [Esc] cancel", m.inputText)
 	} else if m.mergeSource != "" {
-		b.WriteString(styles.VoteBadge.Render(" MERGE MODE "))
-		b.WriteString("  Select target card, then press ")
-		b.WriteString(styles.Selected.Render("[m]"))
-		b.WriteString("  or ")
-		b.WriteString(styles.Selected.Render("[Esc]"))
-		b.WriteString(" to cancel\n")
+		help = "MERGE: select target, press [m] to merge  [Esc] cancel"
 	} else {
-		b.WriteString(styles.StatusBar.Render("[↑↓] navigate  [m] merge  [u] ungroup  [r] rename  [q] quit"))
+		help = "[↑↓] navigate  [←→/Tab] column  [m] merge  [u] ungroup  [r] rename  [q] quit"
 	}
 
-	return b.String()
+	return board + "\n\n" + styles.StatusBar.Render(help)
 }
 
 func (m Model) handleGroupKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -151,7 +147,12 @@ func (m Model) handleGroupKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleGroupRenameInput(msg)
 	}
 
-	items := m.flatGroupItems()
+	columns := m.getColumns()
+	if len(columns) == 0 {
+		return m, nil
+	}
+
+	items := m.columnGroupItems(columns[m.activeCol].id)
 
 	switch msg.String() {
 	case "up", "k":
@@ -162,6 +163,16 @@ func (m Model) handleGroupKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.cursor < len(items)-1 {
 			m.cursor++
 		}
+	case "tab", "right", "l":
+		if len(columns) > 0 {
+			m.activeCol = (m.activeCol + 1) % len(columns)
+			m.cursor = 0
+		}
+	case "shift+tab", "left", "h":
+		if len(columns) > 0 {
+			m.activeCol = (m.activeCol - 1 + len(columns)) % len(columns)
+			m.cursor = 0
+		}
 	case "m":
 		if m.cursor < len(items) {
 			item := items[m.cursor]
@@ -169,10 +180,8 @@ func (m Model) handleGroupKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				break
 			}
 			if m.mergeSource == "" {
-				// First selection
 				m.mergeSource = item.cardID
 			} else if m.mergeSource != item.cardID {
-				// Second selection — merge
 				m.mergeCards(m.mergeSource, item.cardID)
 				m.mergeSource = ""
 			}
@@ -203,11 +212,14 @@ func (m Model) handleGroupRenameInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		name := strings.TrimSpace(m.inputText)
 		if name != "" {
-			items := m.flatGroupItems()
-			if m.cursor < len(items) {
-				item := items[m.cursor]
-				if item.kind == "group-header" {
-					m.renameGroupByID(item.groupID, name)
+			columns := m.getColumns()
+			if m.activeCol < len(columns) {
+				items := m.columnGroupItems(columns[m.activeCol].id)
+				if m.cursor < len(items) {
+					item := items[m.cursor]
+					if item.kind == "group-header" {
+						m.renameGroupByID(item.groupID, name)
+					}
 				}
 			}
 		}
@@ -233,7 +245,6 @@ func (m *Model) mergeCards(sourceID, targetID string) {
 		return
 	}
 
-	// Find if target is already in a group
 	var targetGroup *protocol.Group
 	for i, g := range m.state.Groups {
 		for _, cid := range g.CardIDs {
@@ -244,20 +255,17 @@ func (m *Model) mergeCards(sourceID, targetID string) {
 		}
 	}
 
-	// Check if source is already in a group
 	for _, g := range m.state.Groups {
 		for _, cid := range g.CardIDs {
 			if cid == sourceID {
-				return // source already grouped, no-op
+				return
 			}
 		}
 	}
 
 	if targetGroup != nil {
-		// Add source to existing group
 		targetGroup.CardIDs = append(targetGroup.CardIDs, sourceID)
 	} else {
-		// Create new group
 		sourceCard, _ := m.cardByID(sourceID)
 		targetCard, _ := m.cardByID(targetID)
 		newGroup := protocol.Group{
