@@ -28,6 +28,7 @@ type Model struct {
 	inputText     string
 	inputMode     bool
 	activeCol     int
+	mergeSource   string // card ID selected as merge source
 	err           error
 	width         int
 	height        int

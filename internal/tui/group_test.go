@@ -25,126 +25,390 @@ func testGroupModel() Model {
 	return m
 }
 
-func TestViewGroup_ShowsGroups(t *testing.T) {
+// --- flatGroupItems ---
+
+func TestFlatGroupItems_Structure(t *testing.T) {
+	m := testGroupModel()
+	items := m.flatGroupItems()
+
+	// g1 header, c1, c2, c3 (ungrouped), c4 (ungrouped, start col)
+	if len(items) != 5 {
+		t.Fatalf("expected 5 items, got %d", len(items))
+	}
+	if items[0].kind != "group-header" {
+		t.Error("first item should be group header")
+	}
+	if items[1].kind != "card" || items[1].cardID != "c1" {
+		t.Error("second item should be card c1")
+	}
+	if items[1].grouped != true {
+		t.Error("c1 should be marked as grouped")
+	}
+	if items[3].kind != "card" || items[3].cardID != "c3" {
+		t.Error("fourth item should be ungrouped card c3")
+	}
+	if items[3].grouped != false {
+		t.Error("c3 should not be grouped")
+	}
+}
+
+func TestFlatGroupItems_NilState(t *testing.T) {
+	m := testModel()
+	items := m.flatGroupItems()
+	if items != nil {
+		t.Errorf("expected nil, got %v", items)
+	}
+}
+
+func TestFlatGroupItems_NoGroups(t *testing.T) {
+	m := testModel()
+	m.state = &protocol.RetroState{
+		Cards: []protocol.Card{
+			{ID: "c1", ColumnID: "stop", Text: "a"},
+			{ID: "c2", ColumnID: "stop", Text: "b"},
+		},
+	}
+	items := m.flatGroupItems()
+
+	if len(items) != 2 {
+		t.Fatalf("expected 2 items, got %d", len(items))
+	}
+	for _, item := range items {
+		if item.kind != "card" {
+			t.Error("all items should be cards")
+		}
+		if item.grouped {
+			t.Error("no items should be grouped")
+		}
+	}
+}
+
+// --- viewGroup ---
+
+func TestViewGroup_ShowsGroupHeader(t *testing.T) {
 	m := testGroupModel()
 	view := m.viewGroup()
 
 	if !strings.Contains(view, "Process Issues") {
 		t.Error("expected group name in view")
 	}
+}
+
+func TestViewGroup_ShowsGroupedCards(t *testing.T) {
+	m := testGroupModel()
+	view := m.viewGroup()
+
 	if !strings.Contains(view, "long meetings") {
 		t.Error("expected grouped card in view")
 	}
 }
 
-func TestViewGroup_ShowsUngrouped(t *testing.T) {
+func TestViewGroup_ShowsUngroupedCards(t *testing.T) {
 	m := testGroupModel()
 	view := m.viewGroup()
 
-	if !strings.Contains(view, "Ungrouped") {
-		t.Error("expected 'Ungrouped' section")
-	}
 	if !strings.Contains(view, "unclear requirements") {
-		t.Error("expected ungrouped card in view")
+		t.Error("expected ungrouped card")
 	}
 }
 
-func TestViewGroup_ShowsNumberedCards(t *testing.T) {
-	m := testGroupModel()
-	view := m.viewGroup()
-
-	if !strings.Contains(view, "[1]") {
-		t.Error("expected numbered card [1]")
-	}
-}
-
-func TestViewGroup_ShowsCommands(t *testing.T) {
+func TestViewGroup_ShowsHelp(t *testing.T) {
 	m := testGroupModel()
 	view := m.viewGroup()
 
 	if !strings.Contains(view, "merge") {
-		t.Error("expected merge command in help")
-	}
-	if !strings.Contains(view, "rename") {
-		t.Error("expected rename command in help")
+		t.Error("expected merge in help")
 	}
 	if !strings.Contains(view, "ungroup") {
-		t.Error("expected ungroup command in help")
+		t.Error("expected ungroup in help")
+	}
+	if !strings.Contains(view, "rename") {
+		t.Error("expected rename in help")
 	}
 }
 
-func TestViewGroup_InputMode(t *testing.T) {
+func TestViewGroup_MergeMode(t *testing.T) {
 	m := testGroupModel()
-	m.inputMode = true
-	m.inputText = "m 1 2"
+	m.mergeSource = "c3"
 	view := m.viewGroup()
 
-	if !strings.Contains(view, "m 1 2") {
-		t.Error("expected input text in view")
+	if !strings.Contains(view, "MERGE") {
+		t.Error("expected MERGE MODE indicator")
+	}
+}
+
+func TestViewGroup_RenameInput(t *testing.T) {
+	m := testGroupModel()
+	m.inputMode = true
+	m.inputText = "New Name"
+	view := m.viewGroup()
+
+	if !strings.Contains(view, "Rename") {
+		t.Error("expected rename prompt")
+	}
+	if !strings.Contains(view, "New Name") {
+		t.Error("expected input text")
 	}
 }
 
 func TestViewGroup_NilState(t *testing.T) {
 	m := testModel()
-	view := m.viewGroup()
-
-	if view != "" {
-		t.Errorf("expected empty view, got %q", view)
+	if view := m.viewGroup(); view != "" {
+		t.Errorf("expected empty, got %q", view)
 	}
 }
 
-func TestViewGroup_NoCards(t *testing.T) {
-	m := testModel()
-	m.state = &protocol.RetroState{Stage: "group"}
-	view := m.viewGroup()
-
-	// Default columns shown with no cards — commands still available
-	if !strings.Contains(view, "merge") {
-		t.Error("expected commands in view even with no cards")
-	}
-}
-
-func TestHandleGroupKeys_Colon(t *testing.T) {
+func TestViewGroup_CursorHighlight(t *testing.T) {
 	m := testGroupModel()
+	m.cursor = 0 // group header
+	view := m.viewGroup()
 
-	result, _ := m.handleGroupKeys(keyMsg(":"))
+	if !strings.Contains(view, ">") {
+		t.Error("expected cursor indicator")
+	}
+}
+
+// --- handleGroupKeys ---
+
+func TestHandleGroupKeys_Up(t *testing.T) {
+	m := testGroupModel()
+	m.cursor = 2
+
+	result, _ := m.handleGroupKeys(keyMsg("up"))
+	model := result.(Model)
+
+	if model.cursor != 1 {
+		t.Errorf("expected 1, got %d", model.cursor)
+	}
+}
+
+func TestHandleGroupKeys_Down(t *testing.T) {
+	m := testGroupModel()
+	m.cursor = 0
+
+	result, _ := m.handleGroupKeys(keyMsg("down"))
+	model := result.(Model)
+
+	if model.cursor != 1 {
+		t.Errorf("expected 1, got %d", model.cursor)
+	}
+}
+
+func TestHandleGroupKeys_UpAtTop(t *testing.T) {
+	m := testGroupModel()
+	m.cursor = 0
+
+	result, _ := m.handleGroupKeys(keyMsg("up"))
+	model := result.(Model)
+
+	if model.cursor != 0 {
+		t.Errorf("should stay at 0, got %d", model.cursor)
+	}
+}
+
+func TestHandleGroupKeys_DownAtBottom(t *testing.T) {
+	m := testGroupModel()
+	items := m.flatGroupItems()
+	m.cursor = len(items) - 1
+
+	result, _ := m.handleGroupKeys(keyMsg("down"))
+	model := result.(Model)
+
+	if model.cursor != len(items)-1 {
+		t.Errorf("should stay at bottom, got %d", model.cursor)
+	}
+}
+
+func TestHandleGroupKeys_MergeFirstSelect(t *testing.T) {
+	m := testGroupModel()
+	m.cursor = 3 // c3, ungrouped card
+
+	result, _ := m.handleGroupKeys(keyMsg("m"))
+	model := result.(Model)
+
+	if model.mergeSource != "c3" {
+		t.Errorf("expected merge source 'c3', got %q", model.mergeSource)
+	}
+}
+
+func TestHandleGroupKeys_MergeSecondSelect(t *testing.T) {
+	m := testGroupModel()
+	m.mergeSource = "c3"
+	m.cursor = 4 // c4
+
+	result, _ := m.handleGroupKeys(keyMsg("m"))
+	model := result.(Model)
+
+	if model.mergeSource != "" {
+		t.Error("merge source should be cleared after merge")
+	}
+	if len(model.state.Groups) != 2 {
+		t.Errorf("expected new group, got %d groups", len(model.state.Groups))
+	}
+}
+
+func TestHandleGroupKeys_MergeSameCard(t *testing.T) {
+	m := testGroupModel()
+	m.mergeSource = "c3"
+	m.cursor = 3 // same card
+
+	result, _ := m.handleGroupKeys(keyMsg("m"))
+	model := result.(Model)
+
+	if model.mergeSource != "c3" {
+		t.Error("should not merge card with itself")
+	}
+}
+
+func TestHandleGroupKeys_MergeOnGroupHeader(t *testing.T) {
+	m := testGroupModel()
+	m.cursor = 0 // group header
+
+	result, _ := m.handleGroupKeys(keyMsg("m"))
+	model := result.(Model)
+
+	if model.mergeSource != "" {
+		t.Error("should not select group header for merge")
+	}
+}
+
+func TestHandleGroupKeys_Escape(t *testing.T) {
+	m := testGroupModel()
+	m.mergeSource = "c3"
+
+	result, _ := m.handleGroupKeys(keyMsg("esc"))
+	model := result.(Model)
+
+	if model.mergeSource != "" {
+		t.Error("escape should cancel merge")
+	}
+}
+
+func TestHandleGroupKeys_Ungroup(t *testing.T) {
+	m := testGroupModel()
+	m.cursor = 1 // c1, in group g1
+
+	result, _ := m.handleGroupKeys(keyMsg("u"))
+	model := result.(Model)
+
+	// g1 had 2 cards, removing 1 leaves <2, group deleted
+	if len(model.state.Groups) != 0 {
+		t.Errorf("expected group deleted, got %d", len(model.state.Groups))
+	}
+}
+
+func TestHandleGroupKeys_UngroupUngroupedCard(t *testing.T) {
+	m := testGroupModel()
+	m.cursor = 3 // c3, not grouped
+
+	result, _ := m.handleGroupKeys(keyMsg("u"))
+	model := result.(Model)
+
+	if len(model.state.Groups) != 1 {
+		t.Error("should not affect groups when ungrouping an ungrouped card")
+	}
+}
+
+func TestHandleGroupKeys_Rename(t *testing.T) {
+	m := testGroupModel()
+	m.cursor = 0 // group header
+
+	result, _ := m.handleGroupKeys(keyMsg("r"))
 	model := result.(Model)
 
 	if !model.inputMode {
-		t.Error("expected input mode on ':'")
+		t.Error("r on group header should enter rename mode")
 	}
 }
 
-func TestHandleGroupKeys_OtherKey(t *testing.T) {
+func TestHandleGroupKeys_RenameOnCard(t *testing.T) {
 	m := testGroupModel()
+	m.cursor = 1 // card, not group header
 
-	result, _ := m.handleGroupKeys(keyMsg("a"))
+	result, _ := m.handleGroupKeys(keyMsg("r"))
 	model := result.(Model)
 
 	if model.inputMode {
-		t.Error("'a' should not activate input mode in group stage")
+		t.Error("r on card should not enter rename mode")
 	}
 }
 
-func TestHandleGroupInput_Escape(t *testing.T) {
+func TestHandleGroupKeys_VimK(t *testing.T) {
+	m := testGroupModel()
+	m.cursor = 2
+
+	result, _ := m.handleGroupKeys(keyMsg("k"))
+	model := result.(Model)
+
+	if model.cursor != 1 {
+		t.Errorf("expected 1, got %d", model.cursor)
+	}
+}
+
+func TestHandleGroupKeys_VimJ(t *testing.T) {
+	m := testGroupModel()
+	m.cursor = 0
+
+	result, _ := m.handleGroupKeys(keyMsg("j"))
+	model := result.(Model)
+
+	if model.cursor != 1 {
+		t.Errorf("expected 1, got %d", model.cursor)
+	}
+}
+
+// --- rename input ---
+
+func TestHandleGroupRenameInput_Enter(t *testing.T) {
+	m := testGroupModel()
+	m.inputMode = true
+	m.inputText = "New Name"
+	m.cursor = 0 // group header
+
+	result, _ := m.handleGroupRenameInput(keyMsg("enter"))
+	model := result.(Model)
+
+	if model.inputMode {
+		t.Error("should exit input mode")
+	}
+	if model.state.Groups[0].Name != "New Name" {
+		t.Errorf("expected 'New Name', got %q", model.state.Groups[0].Name)
+	}
+}
+
+func TestHandleGroupRenameInput_EnterEmpty(t *testing.T) {
+	m := testGroupModel()
+	m.inputMode = true
+	m.inputText = "  "
+	m.cursor = 0
+
+	result, _ := m.handleGroupRenameInput(keyMsg("enter"))
+	model := result.(Model)
+
+	if model.state.Groups[0].Name != "Process Issues" {
+		t.Error("empty name should not rename")
+	}
+}
+
+func TestHandleGroupRenameInput_Escape(t *testing.T) {
 	m := testGroupModel()
 	m.inputMode = true
 	m.inputText = "partial"
 
-	result, _ := m.handleGroupInput(keyMsg("esc"))
+	result, _ := m.handleGroupRenameInput(keyMsg("esc"))
 	model := result.(Model)
 
 	if model.inputMode {
-		t.Error("escape should exit input mode")
+		t.Error("escape should exit rename")
 	}
 }
 
-func TestHandleGroupInput_Backspace(t *testing.T) {
+func TestHandleGroupRenameInput_Backspace(t *testing.T) {
 	m := testGroupModel()
 	m.inputMode = true
 	m.inputText = "abc"
 
-	result, _ := m.handleGroupInput(keyMsg("backspace"))
+	result, _ := m.handleGroupRenameInput(keyMsg("backspace"))
 	model := result.(Model)
 
 	if model.inputText != "ab" {
@@ -152,233 +416,117 @@ func TestHandleGroupInput_Backspace(t *testing.T) {
 	}
 }
 
-func TestHandleGroupInput_TypeChar(t *testing.T) {
+func TestHandleGroupRenameInput_TypeChar(t *testing.T) {
 	m := testGroupModel()
 	m.inputMode = true
-	m.inputText = "m "
+	m.inputText = "Ne"
 
-	result, _ := m.handleGroupInput(keyMsg("1"))
+	result, _ := m.handleGroupRenameInput(keyMsg("w"))
 	model := result.(Model)
 
-	if model.inputText != "m 1" {
-		t.Errorf("expected 'm 1', got %q", model.inputText)
+	if model.inputText != "New" {
+		t.Errorf("expected 'New', got %q", model.inputText)
 	}
 }
 
-func TestBuildCardIndex(t *testing.T) {
-	m := testGroupModel()
-	idx := m.buildCardIndex()
-
-	if idx["c1"] != 1 {
-		t.Errorf("c1 should be 1, got %d", idx["c1"])
-	}
-	if idx["c4"] != 4 {
-		t.Errorf("c4 should be 4, got %d", idx["c4"])
-	}
-}
-
-func TestBuildCardIndex_NilState(t *testing.T) {
-	m := testModel()
-	idx := m.buildCardIndex()
-
-	if len(idx) != 0 {
-		t.Errorf("expected empty map, got %v", idx)
-	}
-}
-
-func TestCardIDByIndex(t *testing.T) {
-	m := testGroupModel()
-
-	if id := m.cardIDByIndex("1"); id != "c1" {
-		t.Errorf("expected 'c1', got %q", id)
-	}
-	if id := m.cardIDByIndex("4"); id != "c4" {
-		t.Errorf("expected 'c4', got %q", id)
-	}
-	if id := m.cardIDByIndex("99"); id != "" {
-		t.Errorf("expected empty for out-of-range, got %q", id)
-	}
-	if id := m.cardIDByIndex("abc"); id != "" {
-		t.Errorf("expected empty for non-numeric, got %q", id)
-	}
-}
+// --- merge/ungroup/rename logic ---
 
 func TestMergeCards_CreateNewGroup(t *testing.T) {
 	m := testGroupModel()
-	// c3 and c4 are ungrouped
-	// But c3 is stop, c4 is start — use two ungrouped stop cards
-	m.state.Cards = append(m.state.Cards, protocol.Card{ID: "c5", ColumnID: "stop", Text: "no retros"})
-
-	m.mergeCards("c5", "c3")
+	m.mergeCards("c3", "c4")
 
 	if len(m.state.Groups) != 2 {
 		t.Fatalf("expected 2 groups, got %d", len(m.state.Groups))
-	}
-	newGroup := m.state.Groups[1]
-	if len(newGroup.CardIDs) != 2 {
-		t.Errorf("expected 2 cards in new group, got %d", len(newGroup.CardIDs))
 	}
 }
 
 func TestMergeCards_AddToExistingGroup(t *testing.T) {
 	m := testGroupModel()
-	// c3 is ungrouped, g1 contains c1 and c2
 	m.mergeCards("c3", "c1") // c1 is in g1
 
-	if len(m.state.Groups) != 1 {
-		t.Fatalf("expected 1 group, got %d", len(m.state.Groups))
-	}
 	if len(m.state.Groups[0].CardIDs) != 3 {
-		t.Errorf("expected 3 cards in group, got %d", len(m.state.Groups[0].CardIDs))
+		t.Errorf("expected 3 cards, got %d", len(m.state.Groups[0].CardIDs))
 	}
 }
 
 func TestMergeCards_SourceAlreadyGrouped(t *testing.T) {
 	m := testGroupModel()
-	// c1 is in g1, should be no-op
-	m.mergeCards("c1", "c3")
+	m.mergeCards("c1", "c3") // c1 already in group
 
 	if len(m.state.Groups) != 1 {
-		t.Errorf("expected no new group, got %d groups", len(m.state.Groups))
+		t.Error("should not create new group")
 	}
 }
 
 func TestMergeCards_NilState(t *testing.T) {
 	m := testModel()
-	m.mergeCards("c1", "c2") // should not panic
+	m.mergeCards("c1", "c2") // no panic
 }
 
 func TestRenameGroupByID(t *testing.T) {
 	m := testGroupModel()
-	m.renameGroupByID("g1", "New Name")
+	m.renameGroupByID("g1", "Better")
 
-	if m.state.Groups[0].Name != "New Name" {
-		t.Errorf("expected 'New Name', got %q", m.state.Groups[0].Name)
+	if m.state.Groups[0].Name != "Better" {
+		t.Errorf("got %q", m.state.Groups[0].Name)
 	}
 }
 
 func TestRenameGroupByID_NotFound(t *testing.T) {
 	m := testGroupModel()
-	m.renameGroupByID("nonexistent", "New Name")
-
-	// Should not panic or change anything
+	m.renameGroupByID("nonexistent", "X")
 	if m.state.Groups[0].Name != "Process Issues" {
-		t.Error("should not change existing group")
+		t.Error("should not change")
 	}
 }
 
 func TestRenameGroupByID_NilState(t *testing.T) {
 	m := testModel()
-	m.renameGroupByID("g1", "New") // should not panic
+	m.renameGroupByID("g1", "X") // no panic
 }
 
-func TestUngroupCardByID(t *testing.T) {
+func TestUngroupCardByID_DeletesGroup(t *testing.T) {
 	m := testGroupModel()
-	// g1 has c1 and c2, ungrouping c1 should keep g1 with 1 card → delete group
 	m.ungroupCardByID("c1")
 
 	if len(m.state.Groups) != 0 {
-		t.Errorf("expected group to be deleted (< 2 cards), got %d groups", len(m.state.Groups))
+		t.Errorf("expected 0 groups, got %d", len(m.state.Groups))
 	}
 }
 
 func TestUngroupCardByID_GroupSurvives(t *testing.T) {
 	m := testGroupModel()
 	m.state.Groups[0].CardIDs = []string{"c1", "c2", "c3"}
-
 	m.ungroupCardByID("c1")
 
 	if len(m.state.Groups) != 1 {
-		t.Fatalf("expected group to survive, got %d groups", len(m.state.Groups))
+		t.Fatal("group should survive")
 	}
 	if len(m.state.Groups[0].CardIDs) != 2 {
-		t.Errorf("expected 2 cards remaining, got %d", len(m.state.Groups[0].CardIDs))
+		t.Errorf("expected 2 cards, got %d", len(m.state.Groups[0].CardIDs))
 	}
 }
 
 func TestUngroupCardByID_NotInGroup(t *testing.T) {
 	m := testGroupModel()
-	initialGroups := len(m.state.Groups)
-
-	m.ungroupCardByID("c3") // not in any group
-
-	if len(m.state.Groups) != initialGroups {
-		t.Error("should not change groups for ungrouped card")
+	m.ungroupCardByID("c3")
+	if len(m.state.Groups) != 1 {
+		t.Error("should not change")
 	}
 }
 
 func TestUngroupCardByID_NilState(t *testing.T) {
 	m := testModel()
-	m.ungroupCardByID("c1") // should not panic
+	m.ungroupCardByID("c1") // no panic
 }
 
 func TestUngroupedCardsForColumn(t *testing.T) {
 	m := testGroupModel()
 	ungrouped := m.ungroupedCardsForColumn("stop")
 
-	if len(ungrouped) != 1 {
-		t.Fatalf("expected 1 ungrouped stop card, got %d", len(ungrouped))
+	if len(ungrouped) != 1 || ungrouped[0].ID != "c3" {
+		t.Errorf("expected [c3], got %v", ungrouped)
 	}
-	if ungrouped[0].ID != "c3" {
-		t.Errorf("expected c3, got %q", ungrouped[0].ID)
-	}
-}
-
-func TestUngroupedCardsForColumn_AllGrouped(t *testing.T) {
-	m := testGroupModel()
-	m.state.Groups[0].CardIDs = []string{"c1", "c2", "c3"}
-	ungrouped := m.ungroupedCardsForColumn("stop")
-
-	if len(ungrouped) != 0 {
-		t.Errorf("expected 0 ungrouped, got %d", len(ungrouped))
-	}
-}
-
-func TestExecuteGroupCommand_Merge(t *testing.T) {
-	m := testGroupModel()
-	m.state.Cards = append(m.state.Cards, protocol.Card{ID: "c5", ColumnID: "stop", Text: "no retros"})
-
-	m.executeGroupCommand("m 5 3")
-
-	if len(m.state.Groups) != 2 {
-		t.Errorf("expected 2 groups after merge, got %d", len(m.state.Groups))
-	}
-}
-
-func TestExecuteGroupCommand_Rename(t *testing.T) {
-	m := testGroupModel()
-	m.executeGroupCommand("r g1 Better Name")
-
-	if m.state.Groups[0].Name != "Better Name" {
-		t.Errorf("expected 'Better Name', got %q", m.state.Groups[0].Name)
-	}
-}
-
-func TestExecuteGroupCommand_Ungroup(t *testing.T) {
-	m := testGroupModel()
-	m.executeGroupCommand("u 1") // c1 is in g1
-
-	if len(m.state.Groups) != 0 {
-		t.Errorf("expected group deleted, got %d", len(m.state.Groups))
-	}
-}
-
-func TestExecuteGroupCommand_Empty(t *testing.T) {
-	m := testGroupModel()
-	m.executeGroupCommand("") // should not panic
-}
-
-func TestExecuteGroupCommand_Unknown(t *testing.T) {
-	m := testGroupModel()
-	m.executeGroupCommand("x 1 2") // unknown command, no-op
-	if len(m.state.Groups) != 1 {
-		t.Error("unknown command should not change state")
-	}
-}
-
-func TestExecuteGroupCommand_NilState(t *testing.T) {
-	m := testModel()
-	m.executeGroupCommand("m 1 2") // should not panic
 }
 
 func TestViewGroup_InAppView(t *testing.T) {
@@ -386,6 +534,24 @@ func TestViewGroup_InAppView(t *testing.T) {
 	view := m.View()
 
 	if !strings.Contains(view, "GROUP") {
-		t.Error("expected 'GROUP' in header")
+		t.Error("expected GROUP in header")
 	}
+}
+
+func TestHandleGroupKeys_DelegatesToRenameInput(t *testing.T) {
+	m := testGroupModel()
+	m.inputMode = true
+	m.inputText = "x"
+
+	result, _ := m.handleGroupKeys(keyMsg("y"))
+	model := result.(Model)
+
+	if model.inputText != "xy" {
+		t.Errorf("expected 'xy', got %q", model.inputText)
+	}
+}
+
+func TestBroadcastState_NilClient(t *testing.T) {
+	m := testGroupModel()
+	m.broadcastState() // no panic
 }

@@ -9,68 +9,138 @@ import (
 	"github.com/helmedeiros/fastretro-cli/internal/styles"
 )
 
+// groupItem is a flat list entry for cursor navigation.
+type groupItem struct {
+	kind    string // "card", "group-header"
+	cardID  string
+	groupID string
+	label   string
+	grouped bool
+	colID   string
+}
+
+// flatGroupItems builds a flat navigable list of all cards and group headers.
+func (m Model) flatGroupItems() []groupItem {
+	if m.state == nil {
+		return nil
+	}
+	var items []groupItem
+	grouped := m.groupedCardIDs()
+
+	for _, col := range m.getColumns() {
+		// Groups in this column
+		for _, g := range m.groupsForColumn(col.id) {
+			items = append(items, groupItem{
+				kind:    "group-header",
+				groupID: g.ID,
+				label:   fmt.Sprintf("%s (%d)", g.Name, len(g.CardIDs)),
+				colID:   col.id,
+			})
+			for _, cid := range g.CardIDs {
+				if card, ok := m.cardByID(cid); ok {
+					items = append(items, groupItem{
+						kind:    "card",
+						cardID:  cid,
+						groupID: g.ID,
+						label:   card.Text,
+						grouped: true,
+						colID:   col.id,
+					})
+				}
+			}
+		}
+		// Ungrouped cards in this column
+		for _, c := range m.cardsForColumn(col.id) {
+			if !grouped[c.ID] {
+				items = append(items, groupItem{
+					kind:   "card",
+					cardID: c.ID,
+					label:  c.Text,
+					colID:  col.id,
+				})
+			}
+		}
+	}
+	return items
+}
+
 func (m Model) viewGroup() string {
 	if m.state == nil {
 		return ""
 	}
 
-	columns := m.getColumns()
-	if len(columns) == 0 {
+	items := m.flatGroupItems()
+	if len(items) == 0 {
 		return styles.Subtitle.Render("No cards to group")
 	}
 
 	var b strings.Builder
 
-	cardIndex := 1
-	cardMap := m.buildCardIndex()
-
-	for _, col := range columns {
-		b.WriteString(styles.Selected.Render(fmt.Sprintf("Column: %s", col.title)))
-		b.WriteString("\n\n")
-
-		// Groups in this column
-		groups := m.groupsForColumn(col.id)
-		for _, g := range groups {
-			b.WriteString(fmt.Sprintf("  [%s] %s (%d)\n", g.ID, g.Name, len(g.CardIDs)))
-			for _, cid := range g.CardIDs {
-				if card, ok := m.cardByID(cid); ok {
-					idx := cardMap[cid]
-					b.WriteString(fmt.Sprintf("      [%d] %s\n", idx, truncate(card.Text, 40)))
-				}
+	currentCol := ""
+	for i, item := range items {
+		// Column header
+		if item.colID != currentCol {
+			if currentCol != "" {
+				b.WriteString("\n")
 			}
+			currentCol = item.colID
+			b.WriteString(styles.Subtitle.Render(fmt.Sprintf("── %s ──", currentCol)))
 			b.WriteString("\n")
 		}
 
-		// Ungrouped cards
-		ungrouped := m.ungroupedCardsForColumn(col.id)
-		if len(ungrouped) > 0 {
-			b.WriteString(styles.Subtitle.Render("  Ungrouped"))
+		cursor := "  "
+		if i == m.cursor {
+			cursor = "> "
+		}
+
+		isMergeSource := item.kind == "card" && item.cardID == m.mergeSource
+
+		switch item.kind {
+		case "group-header":
+			line := fmt.Sprintf("%s┌ %s", cursor, item.label)
+			if i == m.cursor {
+				b.WriteString(styles.Selected.Render(line))
+			} else {
+				b.WriteString(styles.Selected.Render("  ┌ " + item.label))
+			}
 			b.WriteString("\n")
-			for _, c := range ungrouped {
-				idx := cardMap[c.ID]
-				b.WriteString(fmt.Sprintf("      [%d] %s\n", idx, truncate(c.Text, 40)))
-				cardIndex++
+
+		case "card":
+			prefix := "  "
+			if item.grouped {
+				prefix = "│ "
+			}
+			text := truncate(item.label, 38)
+			line := fmt.Sprintf("%s%s%s", cursor, prefix, text)
+
+			if isMergeSource {
+				b.WriteString(styles.VoteBadge.Render(line))
+			} else if i == m.cursor {
+				b.WriteString(styles.Selected.Render(line))
+			} else if item.grouped {
+				b.WriteString(fmt.Sprintf("  %s%s", prefix, text))
+			} else {
+				b.WriteString(fmt.Sprintf("  • %s", text))
 			}
 			b.WriteString("\n")
 		}
 	}
-	_ = cardIndex
 
-	// Commands help
+	b.WriteString("\n")
+
+	// Rename input mode
 	if m.inputMode {
-		b.WriteString(fmt.Sprintf("\n  > %s▌\n", m.inputText))
-		b.WriteString(styles.StatusBar.Render("[Enter] execute  [Esc] cancel"))
+		b.WriteString(fmt.Sprintf("  Rename: %s▌\n", m.inputText))
+		b.WriteString(styles.StatusBar.Render("[Enter] save  [Esc] cancel"))
+	} else if m.mergeSource != "" {
+		b.WriteString(styles.VoteBadge.Render(" MERGE MODE "))
+		b.WriteString("  Select target card, then press ")
+		b.WriteString(styles.Selected.Render("[m]"))
+		b.WriteString("  or ")
+		b.WriteString(styles.Selected.Render("[Esc]"))
+		b.WriteString(" to cancel\n")
 	} else {
-		b.WriteString("\n")
-		b.WriteString(styles.StatusBar.Render("Commands:"))
-		b.WriteString("\n")
-		b.WriteString(styles.StatusBar.Render("  m <a> <b>   merge notes into cluster"))
-		b.WriteString("\n")
-		b.WriteString(styles.StatusBar.Render("  r <id>      rename cluster"))
-		b.WriteString("\n")
-		b.WriteString(styles.StatusBar.Render("  u <id>      ungroup note from cluster"))
-		b.WriteString("\n")
-		b.WriteString(styles.StatusBar.Render("  :           enter command mode  [q] quit"))
+		b.WriteString(styles.StatusBar.Render("[↑↓] navigate  [m] merge  [u] ungroup  [r] rename  [q] quit"))
 	}
 
 	return b.String()
@@ -78,23 +148,68 @@ func (m Model) viewGroup() string {
 
 func (m Model) handleGroupKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.inputMode {
-		return m.handleGroupInput(msg)
+		return m.handleGroupRenameInput(msg)
 	}
 
+	items := m.flatGroupItems()
+
 	switch msg.String() {
-	case ":":
-		m.inputMode = true
-		m.inputText = ""
+	case "up", "k":
+		if m.cursor > 0 {
+			m.cursor--
+		}
+	case "down", "j":
+		if m.cursor < len(items)-1 {
+			m.cursor++
+		}
+	case "m":
+		if m.cursor < len(items) {
+			item := items[m.cursor]
+			if item.kind != "card" {
+				break
+			}
+			if m.mergeSource == "" {
+				// First selection
+				m.mergeSource = item.cardID
+			} else if m.mergeSource != item.cardID {
+				// Second selection — merge
+				m.mergeCards(m.mergeSource, item.cardID)
+				m.mergeSource = ""
+			}
+		}
+	case "u":
+		if m.cursor < len(items) {
+			item := items[m.cursor]
+			if item.kind == "card" && item.grouped {
+				m.ungroupCardByID(item.cardID)
+			}
+		}
+	case "r":
+		if m.cursor < len(items) {
+			item := items[m.cursor]
+			if item.kind == "group-header" {
+				m.inputMode = true
+				m.inputText = ""
+			}
+		}
+	case "esc":
+		m.mergeSource = ""
 	}
 	return m, nil
 }
 
-func (m Model) handleGroupInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m Model) handleGroupRenameInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
-		cmd := strings.TrimSpace(m.inputText)
-		if cmd != "" {
-			m.executeGroupCommand(cmd)
+		name := strings.TrimSpace(m.inputText)
+		if name != "" {
+			items := m.flatGroupItems()
+			if m.cursor < len(items) {
+				item := items[m.cursor]
+				if item.kind == "group-header" {
+					m.renameGroupByID(item.groupID, name)
+				}
+			}
 		}
 		m.inputMode = false
 		m.inputText = ""
@@ -111,45 +226,6 @@ func (m Model) handleGroupInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, nil
-}
-
-func (m *Model) executeGroupCommand(cmd string) {
-	parts := strings.Fields(cmd)
-	if len(parts) == 0 || m.state == nil {
-		return
-	}
-
-	switch parts[0] {
-	case "m":
-		// m <cardNumA> <cardNumB> — merge two cards into a group
-		if len(parts) < 3 {
-			return
-		}
-		cardA := m.cardIDByIndex(parts[1])
-		cardB := m.cardIDByIndex(parts[2])
-		if cardA == "" || cardB == "" {
-			return
-		}
-		m.mergeCards(cardA, cardB)
-	case "r":
-		// r <groupId> <new name...> — rename a group
-		if len(parts) < 3 {
-			return
-		}
-		groupID := parts[1]
-		name := strings.Join(parts[2:], " ")
-		m.renameGroupByID(groupID, name)
-	case "u":
-		// u <cardNum> — ungroup a card
-		if len(parts) < 2 {
-			return
-		}
-		cardID := m.cardIDByIndex(parts[1])
-		if cardID == "" {
-			return
-		}
-		m.ungroupCardByID(cardID)
-	}
 }
 
 func (m *Model) mergeCards(sourceID, targetID string) {
@@ -181,7 +257,7 @@ func (m *Model) mergeCards(sourceID, targetID string) {
 		// Add source to existing group
 		targetGroup.CardIDs = append(targetGroup.CardIDs, sourceID)
 	} else {
-		// Create new group with both cards
+		// Create new group
 		sourceCard, _ := m.cardByID(sourceID)
 		targetCard, _ := m.cardByID(targetID)
 		newGroup := protocol.Group{
@@ -193,11 +269,7 @@ func (m *Model) mergeCards(sourceID, targetID string) {
 		m.state.Groups = append(m.state.Groups, newGroup)
 	}
 
-	if m.client != nil {
-		if err := m.client.SendState(m.state); err != nil {
-			m.err = err
-		}
-	}
+	m.broadcastState()
 }
 
 func (m *Model) renameGroupByID(groupID, name string) {
@@ -207,11 +279,7 @@ func (m *Model) renameGroupByID(groupID, name string) {
 	for i, g := range m.state.Groups {
 		if g.ID == groupID {
 			m.state.Groups[i].Name = strings.TrimSpace(name)
-			if m.client != nil {
-				if err := m.client.SendState(m.state); err != nil {
-					m.err = err
-				}
-			}
+			m.broadcastState()
 			return
 		}
 	}
@@ -225,48 +293,22 @@ func (m *Model) ungroupCardByID(cardID string) {
 		for j, cid := range g.CardIDs {
 			if cid == cardID {
 				m.state.Groups[i].CardIDs = append(g.CardIDs[:j], g.CardIDs[j+1:]...)
-				// Remove group if fewer than 2 cards
 				if len(m.state.Groups[i].CardIDs) < 2 {
 					m.state.Groups = append(m.state.Groups[:i], m.state.Groups[i+1:]...)
 				}
-				if m.client != nil {
-					if err := m.client.SendState(m.state); err != nil {
-						m.err = err
-					}
-				}
+				m.broadcastState()
 				return
 			}
 		}
 	}
 }
 
-// buildCardIndex assigns a sequential number to each card.
-func (m Model) buildCardIndex() map[string]int {
-	idx := make(map[string]int)
-	if m.state == nil {
-		return idx
-	}
-	n := 1
-	for _, c := range m.state.Cards {
-		idx[c.ID] = n
-		n++
-	}
-	return idx
-}
-
-// cardIDByIndex looks up a card ID by its display index number (as string).
-func (m Model) cardIDByIndex(numStr string) string {
-	var num int
-	if _, err := fmt.Sscanf(numStr, "%d", &num); err != nil {
-		return ""
-	}
-	cardMap := m.buildCardIndex()
-	for id, idx := range cardMap {
-		if idx == num {
-			return id
+func (m *Model) broadcastState() {
+	if m.client != nil {
+		if err := m.client.SendState(m.state); err != nil {
+			m.err = err
 		}
 	}
-	return ""
 }
 
 func (m Model) ungroupedCardsForColumn(colID string) []protocol.Card {
