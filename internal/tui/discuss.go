@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/helmedeiros/fastretro-cli/internal/protocol"
 	"github.com/helmedeiros/fastretro-cli/internal/styles"
 )
@@ -25,68 +26,93 @@ func (m Model) viewDiscuss() string {
 	}
 
 	currentID := order[discuss.CurrentIndex]
-	label := m.labelForItem(currentID)
 
-	// Carousel bar: show all items, highlight current
-	b.WriteString(styles.Subtitle.Render(
-		fmt.Sprintf("Discussing %d of %d", discuss.CurrentIndex+1, len(order))))
+	// Dot indicators
+	var dots []string
+	for i := range order {
+		if i == discuss.CurrentIndex {
+			dots = append(dots, styles.Selected.Render("●"))
+		} else {
+			dots = append(dots, styles.Subtitle.Render("○"))
+		}
+	}
+	b.WriteString("  " + strings.Join(dots, " "))
 	b.WriteString("\n\n")
 
+	// Carousel: show items with vote counts, current enlarged
 	for i, id := range order {
-		itemLabel := truncate(m.labelForItem(id), 20)
+		label := truncate(m.labelForItem(id), 22)
+		votes := m.votesForItem(id)
+		subcards := m.subcardsForItem(id)
+
+		var card string
 		if i == discuss.CurrentIndex {
-			b.WriteString(styles.VoteBadge.Render(fmt.Sprintf(" %s ", itemLabel)))
+			var lines []string
+			lines = append(lines, styles.Selected.Render(label))
+			for _, sc := range subcards {
+				lines = append(lines, styles.Subtitle.Render("  "+truncate(sc, 20)))
+			}
+			lines = append(lines, styles.VoteBadge.Render(fmt.Sprintf("Votes: %d", votes)))
+			card = styles.ActiveCard.Render(strings.Join(lines, "\n"))
 		} else {
-			b.WriteString(styles.Subtitle.Render(fmt.Sprintf(" %s ", itemLabel)))
+			content := label
+			if votes > 0 {
+				content += fmt.Sprintf("  +%d", votes)
+			}
+			card = styles.Card.Render(content)
 		}
+		b.WriteString(card)
 		b.WriteString(" ")
 	}
 	b.WriteString("\n\n")
 
-	// Current item
-	b.WriteString(styles.ActiveCard.Render(fmt.Sprintf("  %s  ", label)))
+	// Prev / Next bar
+	prevLabel := "← Prev"
+	nextLabel := "Next →"
+	if discuss.CurrentIndex == 0 {
+		prevLabel = styles.Subtitle.Render(prevLabel)
+	} else {
+		prevLabel = styles.Selected.Render(prevLabel)
+	}
+	if discuss.CurrentIndex >= len(order)-1 {
+		nextLabel = styles.Subtitle.Render(nextLabel)
+	} else {
+		nextLabel = styles.Selected.Render(nextLabel)
+	}
+	b.WriteString(fmt.Sprintf("  %s          %s", prevLabel, nextLabel))
 	b.WriteString("\n\n")
 
-	// Segment tabs
+	// Context & Actions side by side
 	segment := discuss.Segment
 	if segment == "" {
 		segment = "context"
 	}
-	segments := []string{"context", "actions"}
-	for _, s := range segments {
-		if s == segment {
-			b.WriteString(styles.Selected.Render(fmt.Sprintf(" [%s] ", s)))
-		} else {
-			b.WriteString(fmt.Sprintf("  %s  ", s))
-		}
-	}
-	b.WriteString("\n\n")
 
-	// Notes for current item + segment
-	notes := m.notesForItem(currentID, segment)
-	if len(notes) == 0 {
-		b.WriteString(styles.Subtitle.Render("  No notes yet"))
+	contextNotes := m.notesForItem(currentID, "context")
+	actionNotes := m.notesForItem(currentID, "actions")
+
+	contextCol := m.renderNoteLane("CONTEXT", contextNotes, segment == "context")
+	actionsCol := m.renderNoteLane("ACTIONS", actionNotes, segment == "actions")
+
+	colStyle := styles.Column.Width(35)
+	activeColStyle := colStyle.BorderForeground(styles.Accent)
+
+	var leftBox, rightBox string
+	if segment == "context" {
+		leftBox = activeColStyle.Render(contextCol)
+		rightBox = colStyle.Render(actionsCol)
 	} else {
-		for i, n := range notes {
-			cursor := "  "
-			if i == m.cursor {
-				cursor = "> "
-			}
-			line := fmt.Sprintf("%s• %s", cursor, truncate(n.Text, 50))
-			if i == m.cursor {
-				b.WriteString(styles.Selected.Render(line))
-			} else {
-				b.WriteString(line)
-			}
-			b.WriteString("\n")
-		}
+		leftBox = colStyle.Render(contextCol)
+		rightBox = activeColStyle.Render(actionsCol)
 	}
 
+	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, leftBox, rightBox))
 	b.WriteString("\n")
 
 	// Input mode
 	if m.inputMode {
-		b.WriteString(fmt.Sprintf("  Add note: %s▌\n", m.inputText))
+		laneLabel := segment
+		b.WriteString(fmt.Sprintf("\n  Add %s: %s▌\n", laneLabel, m.inputText))
 		b.WriteString(styles.StatusBar.Render("[Enter] save  [Esc] cancel"))
 	} else {
 		// Timer
@@ -96,10 +122,43 @@ func (m Model) viewDiscuss() string {
 				fmt.Sprintf("Timer: %d:%02d", remaining/60, remaining%60)))
 			b.WriteString("\n")
 		}
-		b.WriteString(styles.StatusBar.Render("[↑↓] notes  [←→] segment  [a] add note  [q] quit"))
+		b.WriteString(styles.StatusBar.Render("[↑↓] notes  [Tab] lane  [p/n] prev/next  [a] add note  [q] quit"))
 	}
 
 	return b.String()
+}
+
+func (m Model) renderNoteLane(title string, notes []noteEntry, active bool) string {
+	var lines []string
+
+	header := title
+	if active {
+		header = styles.Selected.Render(title)
+	} else {
+		header = styles.Subtitle.Render(title)
+	}
+	lines = append(lines, header)
+	lines = append(lines, "")
+
+	if len(notes) == 0 {
+		lines = append(lines, styles.Subtitle.Render("(empty)"))
+	} else {
+		for i, n := range notes {
+			cursor := "  "
+			if active && i == m.cursor {
+				cursor = "> "
+			}
+			text := truncate(n.Text, 30)
+			line := fmt.Sprintf("%s%s", cursor, text)
+			if active && i == m.cursor {
+				lines = append(lines, styles.Selected.Render(line))
+			} else {
+				lines = append(lines, line)
+			}
+		}
+	}
+
+	return strings.Join(lines, "\n")
 }
 
 func (m Model) handleDiscussKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -132,6 +191,13 @@ func (m Model) handleDiscussKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.cursor < len(notes)-1 {
 			m.cursor++
 		}
+	case "tab":
+		if segment == "context" {
+			m.state.Discuss.Segment = "actions"
+		} else {
+			m.state.Discuss.Segment = "context"
+		}
+		m.cursor = 0
 	case "left", "h":
 		if segment == "actions" {
 			m.state.Discuss.Segment = "context"
@@ -141,6 +207,18 @@ func (m Model) handleDiscussKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if segment == "context" {
 			m.state.Discuss.Segment = "actions"
 			m.cursor = 0
+		}
+	case "n":
+		if discuss.CurrentIndex < len(discuss.Order)-1 {
+			m.state.Discuss.CurrentIndex++
+			m.cursor = 0
+			m.broadcastState()
+		}
+	case "p":
+		if discuss.CurrentIndex > 0 {
+			m.state.Discuss.CurrentIndex--
+			m.cursor = 0
+			m.broadcastState()
 		}
 	case "a":
 		m.inputMode = true
@@ -202,6 +280,24 @@ func (m Model) labelForItem(itemID string) string {
 		}
 	}
 	return itemID
+}
+
+func (m Model) subcardsForItem(itemID string) []string {
+	if m.state == nil {
+		return nil
+	}
+	for _, g := range m.state.Groups {
+		if g.ID == itemID {
+			var texts []string
+			for _, cid := range g.CardIDs {
+				if card, ok := m.cardByID(cid); ok {
+					texts = append(texts, card.Text)
+				}
+			}
+			return texts
+		}
+	}
+	return nil
 }
 
 func (m Model) notesForItem(itemID, lane string) []noteEntry {
