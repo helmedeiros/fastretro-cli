@@ -17,9 +17,10 @@ func (m Model) viewVote() string {
 	var b strings.Builder
 
 	remaining := m.votesRemaining()
+	name := m.participantName(m.participantID)
 	b.WriteString(styles.Subtitle.Render(
 		fmt.Sprintf("Voting as: %s (%d/%d votes left)",
-			m.participantID, remaining, m.state.VoteBudget)))
+			name, remaining, m.state.VoteBudget)))
 	b.WriteString("\n\n")
 
 	items := m.voteItems()
