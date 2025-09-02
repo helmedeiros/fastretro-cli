@@ -27,19 +27,18 @@ func (m Model) viewDiscuss() string {
 
 	currentID := order[discuss.CurrentIndex]
 
-	// Dot indicators
-	var dotLine strings.Builder
+	// Dot indicators (inline)
+	b.WriteString("  ")
 	for i := range order {
 		if i > 0 {
-			dotLine.WriteString(" ")
+			b.WriteString(" ")
 		}
 		if i == discuss.CurrentIndex {
-			dotLine.WriteString(styles.Selected.Render("●"))
+			b.WriteString(styles.Selected.Render("●"))
 		} else {
-			dotLine.WriteString(styles.Subtitle.Render("○"))
+			b.WriteString(styles.Subtitle.Render("○"))
 		}
 	}
-	b.WriteString(lipgloss.NewStyle().Width(60).Align(lipgloss.Center).Render(dotLine.String()))
 	b.WriteString("\n\n")
 
 	// Carousel: show items with vote counts, current enlarged
@@ -81,10 +80,7 @@ func (m Model) viewDiscuss() string {
 	} else {
 		nextLabel = styles.Selected.Render(nextLabel)
 	}
-	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Center,
-		lipgloss.NewStyle().Width(30).Align(lipgloss.Center).Render(prevLabel),
-		lipgloss.NewStyle().Width(30).Align(lipgloss.Center).Render(nextLabel),
-	))
+	b.WriteString(fmt.Sprintf("  %s       %s", prevLabel, nextLabel))
 	b.WriteString("\n\n")
 
 	// Context & Actions side by side
