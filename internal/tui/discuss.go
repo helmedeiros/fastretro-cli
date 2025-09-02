@@ -40,12 +40,12 @@ func (m Model) viewDiscuss() string {
 	b.WriteString("\n\n")
 
 	// Carousel: show items with vote counts, current enlarged
+	var carouselCards []string
 	for i, id := range order {
 		label := truncate(m.labelForItem(id), 22)
 		votes := m.votesForItem(id)
 		subcards := m.subcardsForItem(id)
 
-		var card string
 		if i == discuss.CurrentIndex {
 			var lines []string
 			lines = append(lines, styles.Selected.Render(label))
@@ -53,17 +53,16 @@ func (m Model) viewDiscuss() string {
 				lines = append(lines, styles.Subtitle.Render("  "+truncate(sc, 20)))
 			}
 			lines = append(lines, styles.VoteBadge.Render(fmt.Sprintf("Votes: %d", votes)))
-			card = styles.ActiveCard.Render(strings.Join(lines, "\n"))
+			carouselCards = append(carouselCards, styles.ActiveCard.Render(strings.Join(lines, "\n")))
 		} else {
 			content := label
 			if votes > 0 {
 				content += fmt.Sprintf("  +%d", votes)
 			}
-			card = styles.Card.Render(content)
+			carouselCards = append(carouselCards, styles.Card.Render(content))
 		}
-		b.WriteString(card)
-		b.WriteString(" ")
 	}
+	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, carouselCards...))
 	b.WriteString("\n\n")
 
 	// Prev / Next bar
@@ -79,7 +78,10 @@ func (m Model) viewDiscuss() string {
 	} else {
 		nextLabel = styles.Selected.Render(nextLabel)
 	}
-	b.WriteString(fmt.Sprintf("  %s          %s", prevLabel, nextLabel))
+	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Center,
+		lipgloss.NewStyle().Width(30).Align(lipgloss.Center).Render(prevLabel),
+		lipgloss.NewStyle().Width(30).Align(lipgloss.Center).Render(nextLabel),
+	))
 	b.WriteString("\n\n")
 
 	// Context & Actions side by side
