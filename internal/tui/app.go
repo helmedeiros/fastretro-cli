@@ -135,6 +135,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m.handleVoteKeys(msg)
 		case "discuss":
 			return m.handleDiscussKeys(msg)
+		case "review":
+			return m.handleReviewKeys(msg)
 		}
 	}
 
