@@ -170,8 +170,9 @@ func (m Model) View() string {
 		roomCode = m.client.RoomCode
 	}
 	header := styles.Title.Render("fastRetro CLI") + "  " +
-		styles.StatusBar.Render(fmt.Sprintf("Room: %s | %d peers | Stage: %s",
-			roomCode, m.peerCount, strings.ToUpper(m.state.Stage)))
+		styles.StatusBar.Render(fmt.Sprintf("Room: %s | %d peers",
+			roomCode, m.peerCount)) + "\n" +
+		m.renderStageBar()
 
 	var body string
 	switch m.state.Stage {
@@ -194,4 +195,26 @@ func (m Model) View() string {
 	}
 
 	return header + "\n\n" + body + "\n"
+}
+
+var allStages = []string{"icebreaker", "brainstorm", "group", "vote", "discuss", "review", "close"}
+
+func (m Model) renderStageBar() string {
+	if m.state == nil {
+		return ""
+	}
+
+	active := lipgloss.NewStyle().Foreground(styles.Accent).Bold(true).Underline(true)
+	inactive := lipgloss.NewStyle().Foreground(styles.Muted)
+
+	var parts []string
+	for _, s := range allStages {
+		label := strings.ToUpper(s)
+		if s == m.state.Stage {
+			parts = append(parts, active.Render(label))
+		} else {
+			parts = append(parts, inactive.Render(label))
+		}
+	}
+	return strings.Join(parts, "  ")
 }
