@@ -27,16 +27,18 @@ func (m Model) viewDiscuss() string {
 
 	currentID := order[discuss.CurrentIndex]
 
-	// Dot indicators (inline)
+	// Dot indicators (inline, no margins)
+	activeDot := lipgloss.NewStyle().Foreground(styles.Accent).Render("●")
+	inactiveDot := lipgloss.NewStyle().Foreground(styles.Muted).Render("○")
 	b.WriteString("  ")
 	for i := range order {
 		if i > 0 {
 			b.WriteString(" ")
 		}
 		if i == discuss.CurrentIndex {
-			b.WriteString(styles.Selected.Render("●"))
+			b.WriteString(activeDot)
 		} else {
-			b.WriteString(styles.Subtitle.Render("○"))
+			b.WriteString(inactiveDot)
 		}
 	}
 	b.WriteString("\n\n")
@@ -68,17 +70,19 @@ func (m Model) viewDiscuss() string {
 	b.WriteString("\n\n")
 
 	// Prev / Next bar
+	muted := lipgloss.NewStyle().Foreground(styles.Muted)
+	accent := lipgloss.NewStyle().Foreground(styles.Accent).Bold(true)
 	prevLabel := "← Prev"
 	nextLabel := "Next →"
 	if discuss.CurrentIndex == 0 {
-		prevLabel = styles.Subtitle.Render(prevLabel)
+		prevLabel = muted.Render(prevLabel)
 	} else {
-		prevLabel = styles.Selected.Render(prevLabel)
+		prevLabel = accent.Render(prevLabel)
 	}
 	if discuss.CurrentIndex >= len(order)-1 {
-		nextLabel = styles.Subtitle.Render(nextLabel)
+		nextLabel = muted.Render(nextLabel)
 	} else {
-		nextLabel = styles.Selected.Render(nextLabel)
+		nextLabel = accent.Render(nextLabel)
 	}
 	b.WriteString(fmt.Sprintf("  %s       %s", prevLabel, nextLabel))
 	b.WriteString("\n\n")
