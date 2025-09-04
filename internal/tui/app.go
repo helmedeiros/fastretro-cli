@@ -169,10 +169,19 @@ func (m Model) View() string {
 	if m.client != nil {
 		roomCode = m.client.RoomCode
 	}
-	header := styles.Title.Render("fastRetro CLI") + "  " +
-		styles.StatusBar.Render(fmt.Sprintf("Room: %s | %d peers",
-			roomCode, m.peerCount)) + "\n" +
-		m.renderStageBar()
+	// Retro name and date
+	retroTitle := "fastRetro CLI"
+	if m.state.Meta.Name != "" {
+		retroTitle = m.state.Meta.Name
+	}
+	retroInfo := styles.Title.Render(retroTitle)
+	if m.state.Meta.Date != "" {
+		retroInfo += "  " + lipgloss.NewStyle().Foreground(styles.Muted).Render(m.state.Meta.Date)
+	}
+	retroInfo += "  " + lipgloss.NewStyle().Foreground(styles.Muted).Render(
+		fmt.Sprintf("Room: %s | %d peers", roomCode, m.peerCount))
+
+	header := retroInfo + "\n" + m.renderStageBar()
 
 	var body string
 	switch m.state.Stage {
