@@ -4,20 +4,21 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/helmedeiros/fastretro-cli/internal/styles"
 )
 
 func (m Model) viewIcebreaker() string {
 	if m.state == nil || m.state.Icebreaker == nil {
-		return styles.Subtitle.Render("Waiting for icebreaker to start...")
+		return lipgloss.NewStyle().Foreground(styles.Muted).Render("Waiting for icebreaker to start...")
 	}
+
+	accent := lipgloss.NewStyle().Foreground(styles.Accent).Bold(true)
+	muted := lipgloss.NewStyle().Foreground(styles.Muted)
 
 	var b strings.Builder
 
 	ib := m.state.Icebreaker
-
-	b.WriteString(styles.Subtitle.Render("Icebreaker"))
-	b.WriteString("\n\n")
 
 	// Current question
 	question := ib.Question
@@ -27,7 +28,7 @@ func (m Model) viewIcebreaker() string {
 	if question != "" {
 		b.WriteString(styles.ActiveCard.Render(fmt.Sprintf("  %s  ", question)))
 	} else {
-		b.WriteString(styles.Subtitle.Render("  Spin the wheel to get a question!"))
+		b.WriteString(muted.Render("  Spin the wheel to get a question!"))
 	}
 	b.WriteString("\n\n")
 
@@ -35,28 +36,29 @@ func (m Model) viewIcebreaker() string {
 	if ib.CurrentIndex < len(ib.ParticipantIDs) {
 		pid := ib.ParticipantIDs[ib.CurrentIndex]
 		name := m.participantName(pid)
-		b.WriteString(fmt.Sprintf("  Answering: %s", name))
+		b.WriteString(fmt.Sprintf("  Answering: %s", accent.Render(name)))
 		b.WriteString("\n")
 	}
 
 	// Participant order
 	if len(ib.ParticipantIDs) > 0 {
-		b.WriteString(fmt.Sprintf("\n  Round %d of %d\n", ib.CurrentIndex+1, len(ib.ParticipantIDs)))
+		b.WriteString(fmt.Sprintf("\n  %s\n\n", muted.Render(
+			fmt.Sprintf("Round %d of %d", ib.CurrentIndex+1, len(ib.ParticipantIDs)))))
 		for i, pid := range ib.ParticipantIDs {
 			name := m.participantName(pid)
-			marker := "  "
 			if i == ib.CurrentIndex {
-				b.WriteString(styles.Selected.Render(fmt.Sprintf("  > %s\n", name)))
+				b.WriteString(accent.Render(fmt.Sprintf("  > %s", name)))
 			} else if i < ib.CurrentIndex {
-				b.WriteString(styles.Taken.Render(fmt.Sprintf("  %s%s (done)\n", marker, name)))
+				b.WriteString(muted.Render(fmt.Sprintf("    %s (done)", name)))
 			} else {
-				b.WriteString(fmt.Sprintf("  %s%s\n", marker, name))
+				b.WriteString(fmt.Sprintf("    %s", name))
 			}
+			b.WriteString("\n")
 		}
 	}
 
 	b.WriteString("\n")
-	b.WriteString(styles.StatusBar.Render("View only — use web app to spin and advance"))
+	b.WriteString(muted.Render("View only — use web app to spin and advance"))
 
 	return b.String()
 }

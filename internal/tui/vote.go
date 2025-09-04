@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/helmedeiros/fastretro-cli/internal/protocol"
 	"github.com/helmedeiros/fastretro-cli/internal/styles"
 )
@@ -14,13 +15,16 @@ func (m Model) viewVote() string {
 		return ""
 	}
 
+	accent := lipgloss.NewStyle().Foreground(styles.Accent).Bold(true)
+	muted := lipgloss.NewStyle().Foreground(styles.Muted)
+
 	var b strings.Builder
 
 	remaining := m.votesRemaining()
 	name := m.participantName(m.participantID)
-	b.WriteString(styles.Subtitle.Render(
-		fmt.Sprintf("Voting as: %s (%d/%d votes left)",
-			name, remaining, m.state.VoteBudget)))
+	b.WriteString(fmt.Sprintf("  Voting as: %s  %s",
+		accent.Render(name),
+		muted.Render(fmt.Sprintf("(%d/%d votes left)", remaining, m.state.VoteBudget))))
 	b.WriteString("\n\n")
 
 	items := m.voteItems()
@@ -38,7 +42,7 @@ func (m Model) viewVote() string {
 			line += "  " + badge
 		}
 		if myVotes > 0 {
-			line += fmt.Sprintf(" (you: %d)", myVotes)
+			line += muted.Render(fmt.Sprintf(" (you: %d)", myVotes))
 		}
 
 		if i == m.cursor {
@@ -50,7 +54,7 @@ func (m Model) viewVote() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(styles.StatusBar.Render("[↑↓] navigate  [Enter/Space] vote  [u] unvote  [q] quit"))
+	b.WriteString(muted.Render("[↑↓] navigate  [Enter/Space] vote  [u] unvote  [q] quit"))
 
 	return b.String()
 }
@@ -75,21 +79,13 @@ func (m Model) handleVoteKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				CardID:        item.id,
 			}
 			m.state.Votes = append(m.state.Votes, vote)
-			if m.client != nil {
-				if err := m.client.SendState(m.state); err != nil {
-					m.err = err
-				}
-			}
+			m.broadcastState()
 		}
 	case "u":
 		if m.cursor < len(items) {
 			item := items[m.cursor]
 			m.removeMyVote(item.id)
-			if m.client != nil {
-				if err := m.client.SendState(m.state); err != nil {
-					m.err = err
-				}
-			}
+			m.broadcastState()
 		}
 	}
 	return m, nil
@@ -105,7 +101,6 @@ func (m Model) voteItems() []voteItem {
 		return nil
 	}
 
-	// Groups first, then ungrouped cards
 	var items []voteItem
 	groupedCards := make(map[string]bool)
 

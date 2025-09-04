@@ -54,7 +54,7 @@ func (m Model) viewBrainstorm() string {
 
 		body := strings.Join(lines, "\n")
 		if len(lines) == 0 {
-			body = styles.Subtitle.Render("  (empty)")
+			body = lipgloss.NewStyle().Foreground(styles.Muted).Render("  (empty)")
 		}
 
 		if m.inputMode && i == m.activeCol {
@@ -76,7 +76,8 @@ func (m Model) viewBrainstorm() string {
 		help = "[Enter] submit  [Esc] cancel"
 	}
 
-	return board + "\n\n" + styles.StatusBar.Render(help)
+	muted := lipgloss.NewStyle().Foreground(styles.Muted)
+	return board + "\n\n" + muted.Render(help)
 }
 
 func (m Model) handleBrainstormKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {

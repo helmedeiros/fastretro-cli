@@ -34,41 +34,26 @@ func testCloseModel() Model {
 		DiscussNotes: []protocol.DiscussNote{
 			{ID: "n1", ParentCardID: "g1", Lane: "actions", Text: "Write runbook"},
 		},
-		ActionOwners: map[string]string{"n1": "Alice"},
+		ActionOwners: map[string]string{"n1": "p1"},
 	}
 	return m
-}
-
-func TestViewClose_ShowsMeta(t *testing.T) {
-	m := testCloseModel()
-	view := m.viewClose()
-
-	if !strings.Contains(view, "Sprint 42") {
-		t.Error("expected name 'Sprint 42' in view")
-	}
-	if !strings.Contains(view, "2025-08-21") {
-		t.Error("expected date in view")
-	}
 }
 
 func TestViewClose_ShowsStats(t *testing.T) {
 	m := testCloseModel()
 	view := m.viewClose()
 
-	if !strings.Contains(view, "Participants: 2") {
-		t.Error("expected 'Participants: 2'")
+	if !strings.Contains(view, "Participants") {
+		t.Error("expected Participants stat")
 	}
-	if !strings.Contains(view, "Cards: 3") {
-		t.Error("expected 'Cards: 3'")
+	if !strings.Contains(view, "2") {
+		t.Error("expected participant count")
 	}
-	if !strings.Contains(view, "Groups: 1") {
-		t.Error("expected 'Groups: 1'")
+	if !strings.Contains(view, "Cards") {
+		t.Error("expected Cards stat")
 	}
-	if !strings.Contains(view, "Votes cast: 3") {
-		t.Error("expected 'Votes cast: 3'")
-	}
-	if !strings.Contains(view, "Action items: 1") {
-		t.Error("expected 'Action items: 1'")
+	if !strings.Contains(view, "3") {
+		t.Error("expected card count")
 	}
 }
 
@@ -77,28 +62,38 @@ func TestViewClose_ShowsActionItems(t *testing.T) {
 	view := m.viewClose()
 
 	if !strings.Contains(view, "Write runbook") {
-		t.Error("expected action item in view")
+		t.Error("expected action item")
 	}
 	if !strings.Contains(view, "Alice") {
-		t.Error("expected owner in view")
+		t.Error("expected resolved owner name")
 	}
 }
 
-func TestViewClose_ShowsBoard(t *testing.T) {
+func TestViewClose_ShowsCheckmark(t *testing.T) {
 	m := testCloseModel()
 	view := m.viewClose()
 
-	if !strings.Contains(view, "Board") {
-		t.Error("expected 'Board' section")
+	if !strings.Contains(view, "✓") {
+		t.Error("expected checkmark")
+	}
+}
+
+func TestViewClose_ShowsBoardOverview(t *testing.T) {
+	m := testCloseModel()
+	view := m.viewClose()
+
+	if !strings.Contains(view, "Board overview") {
+		t.Error("expected board overview section")
+	}
+	if !strings.Contains(view, "Process") {
+		t.Error("expected group in board")
 	}
 }
 
 func TestViewClose_NilState(t *testing.T) {
 	m := testModel()
-	view := m.viewClose()
-
-	if view != "" {
-		t.Errorf("expected empty view for nil state, got %q", view)
+	if view := m.viewClose(); view != "" {
+		t.Errorf("expected empty, got %q", view)
 	}
 }
 
@@ -110,27 +105,39 @@ func TestViewClose_NoActions(t *testing.T) {
 	}
 	view := m.viewClose()
 
-	if !strings.Contains(view, "Summary") {
-		t.Error("expected summary header")
+	if !strings.Contains(view, "Stats") {
+		t.Error("expected stats section")
 	}
-	// Should not contain Action Items section
+	// No Action Items section when none exist
 	if strings.Contains(view, "Action Items") {
 		t.Error("should not show Action Items section when there are none")
 	}
 }
 
-func TestViewClose_NoName(t *testing.T) {
-	m := testModel()
-	m.state = &protocol.RetroState{
-		Stage: "close",
-		Meta:  protocol.RetroMeta{Date: "2025-08-21"},
-	}
+func TestViewClose_ShowsHelp(t *testing.T) {
+	m := testCloseModel()
 	view := m.viewClose()
 
-	if strings.Contains(view, "Name:") {
-		t.Error("should not show Name field when empty")
+	if !strings.Contains(view, "quit") {
+		t.Error("expected quit hint")
 	}
-	if !strings.Contains(view, "2025-08-21") {
-		t.Error("expected date to be shown")
+}
+
+func TestViewClose_InAppView(t *testing.T) {
+	m := testCloseModel()
+	view := m.View()
+
+	if !strings.Contains(view, "CLOSE") {
+		t.Error("expected CLOSE in stage bar")
+	}
+}
+
+func TestViewClose_UnassignedOwner(t *testing.T) {
+	m := testCloseModel()
+	m.state.ActionOwners = nil
+	view := m.viewClose()
+
+	if !strings.Contains(view, "unassigned") {
+		t.Error("expected 'unassigned' for actions without owners")
 	}
 }

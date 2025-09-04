@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/helmedeiros/fastretro-cli/internal/styles"
 )
 
@@ -12,59 +13,87 @@ func (m Model) viewClose() string {
 		return ""
 	}
 
+	accent := lipgloss.NewStyle().Foreground(styles.Accent).Bold(true)
+	muted := lipgloss.NewStyle().Foreground(styles.Muted)
+
 	var b strings.Builder
 
-	b.WriteString(styles.Subtitle.Render("Retrospective Summary"))
+	// Stats
+	b.WriteString(accent.Render("Stats"))
+	b.WriteString("\n")
+	b.WriteString(muted.Render("────────────────────────────────────────"))
 	b.WriteString("\n\n")
 
-	// Meta info
-	meta := m.state.Meta
-	if meta.Name != "" {
-		b.WriteString(fmt.Sprintf("  Name: %s\n", meta.Name))
-	}
-	if meta.Date != "" {
-		b.WriteString(fmt.Sprintf("  Date: %s\n", meta.Date))
-	}
-	b.WriteString("\n")
-
-	// Stats
-	b.WriteString(styles.Subtitle.Render("Stats"))
-	b.WriteString("\n")
-	b.WriteString(fmt.Sprintf("  Participants: %d\n", len(m.state.Participants)))
-	b.WriteString(fmt.Sprintf("  Cards: %d\n", len(m.state.Cards)))
-	b.WriteString(fmt.Sprintf("  Groups: %d\n", len(m.state.Groups)))
-	b.WriteString(fmt.Sprintf("  Votes cast: %d\n", len(m.state.Votes)))
+	b.WriteString(fmt.Sprintf("  Participants: %s\n", accent.Render(fmt.Sprintf("%d", len(m.state.Participants)))))
+	b.WriteString(fmt.Sprintf("  Cards:        %s\n", accent.Render(fmt.Sprintf("%d", len(m.state.Cards)))))
+	b.WriteString(fmt.Sprintf("  Groups:       %s\n", accent.Render(fmt.Sprintf("%d", len(m.state.Groups)))))
+	b.WriteString(fmt.Sprintf("  Votes cast:   %s\n", accent.Render(fmt.Sprintf("%d", len(m.state.Votes)))))
 
 	actions := m.actionNotes()
-	b.WriteString(fmt.Sprintf("  Action items: %d\n", len(actions)))
+	b.WriteString(fmt.Sprintf("  Action items: %s\n", accent.Render(fmt.Sprintf("%d", len(actions)))))
 
 	// Action items
 	if len(actions) > 0 {
 		b.WriteString("\n")
-		b.WriteString(styles.Subtitle.Render("Action Items"))
+		b.WriteString(accent.Render("Action Items"))
 		b.WriteString("\n")
+		b.WriteString(muted.Render("────────────────────────────────────────"))
+		b.WriteString("\n\n")
+
 		for i, a := range actions {
 			owner := m.ownerForAction(a.id)
-			ownerStr := ""
+			ownerStr := muted.Render("unassigned")
 			if owner != "" {
-				ownerStr = fmt.Sprintf(" → %s", owner)
+				ownerStr = muted.Render(m.participantName(owner))
 			}
-			b.WriteString(fmt.Sprintf("  %d. %s%s\n", i+1, a.text, ownerStr))
+			checkmark := accent.Render("✓")
+			b.WriteString(fmt.Sprintf("  %s %d. %s\n", checkmark, i+1, a.text))
+			b.WriteString(fmt.Sprintf("      %s\n\n", ownerStr))
 		}
 	}
 
 	// Board overview
+	b.WriteString(accent.Render("Board overview"))
 	b.WriteString("\n")
-	b.WriteString(styles.Subtitle.Render("Board"))
-	b.WriteString("\n")
+	b.WriteString(muted.Render("────────────────────────────────────────"))
+	b.WriteString("\n\n")
+
 	columns := m.getColumns()
+	grouped := m.groupedCardIDs()
+
+	var colBoxes []string
 	for _, col := range columns {
-		cards := m.cardsForColumn(col.id)
-		b.WriteString(fmt.Sprintf("  %s: %d cards\n", col.title, len(cards)))
+		var lines []string
+		lines = append(lines, accent.Render(col.title))
+		lines = append(lines, "")
+
+		for _, g := range m.groupsForColumn(col.id) {
+			lines = append(lines, accent.Render(g.Name))
+			for _, cid := range g.CardIDs {
+				if card, ok := m.cardByID(cid); ok {
+					lines = append(lines, "  "+muted.Render(truncate(card.Text, 25)))
+				}
+			}
+			lines = append(lines, "")
+		}
+
+		for _, c := range m.cardsForColumn(col.id) {
+			if !grouped[c.ID] {
+				lines = append(lines, muted.Render(truncate(c.Text, 28)))
+			}
+		}
+
+		box := styles.Column.Render(strings.Join(lines, "\n"))
+		colBoxes = append(colBoxes, box)
+	}
+
+	if len(colBoxes) > 0 {
+		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, colBoxes...))
+		b.WriteString("\n")
 	}
 
 	b.WriteString("\n")
-	b.WriteString(styles.StatusBar.Render("Retro complete! [q] quit"))
+	b.WriteString(muted.Render("Retro complete! [q] quit"))
 
 	return b.String()
 }
