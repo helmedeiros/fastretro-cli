@@ -12,15 +12,24 @@ import (
 func (m Model) viewJoin() string {
 	var b strings.Builder
 
-	b.WriteString(styles.Title.Render("fastRetro CLI"))
-	b.WriteString("\n\n")
+	muted := lipgloss.NewStyle().Foreground(styles.Muted)
+
+	// Show retro name if available, otherwise room code
+	title := "fastRetro CLI"
+	if m.state != nil && m.state.Meta.Name != "" {
+		title = m.state.Meta.Name
+	}
+	b.WriteString(styles.Title.Render(title))
+	if m.state != nil && m.state.Meta.Date != "" {
+		b.WriteString("  " + muted.Render(m.state.Meta.Date))
+	}
+	b.WriteString("\n")
+
 	roomCode := ""
 	if m.client != nil {
 		roomCode = m.client.RoomCode
 	}
-	b.WriteString(styles.Subtitle.Render(fmt.Sprintf("Connected to room %s", roomCode)))
-	b.WriteString("\n")
-	b.WriteString(styles.StatusBar.Render(fmt.Sprintf("%d peers in room", m.peerCount)))
+	b.WriteString(muted.Render(fmt.Sprintf("Room: %s | %d peers", roomCode, m.peerCount)))
 	b.WriteString("\n\n")
 	b.WriteString(lipgloss.NewStyle().Bold(true).Render("Who are you?"))
 	b.WriteString("\n\n")
