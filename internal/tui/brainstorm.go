@@ -10,60 +10,128 @@ import (
 	"github.com/helmedeiros/fastretro-cli/internal/styles"
 )
 
+// brainstormItem is a flat entry for cursor navigation within a column.
+type brainstormItem struct {
+	kind   string // "card", "group-header", "group-card"
+	cardID string
+	mine   bool
+}
+
+// columnBrainstormItems builds a navigable list for one column.
+func (m Model) columnBrainstormItems(colID string) []brainstormItem {
+	if m.state == nil {
+		return nil
+	}
+	var items []brainstormItem
+	grouped := m.groupedCardIDs()
+
+	for _, g := range m.groupsForColumn(colID) {
+		items = append(items, brainstormItem{kind: "group-header"})
+		for _, cid := range g.CardIDs {
+			items = append(items, brainstormItem{
+				kind:   "group-card",
+				cardID: cid,
+				mine:   m.isMyCard(cid),
+			})
+		}
+	}
+
+	for _, c := range m.cardsForColumn(colID) {
+		if !grouped[c.ID] {
+			items = append(items, brainstormItem{
+				kind:   "card",
+				cardID: c.ID,
+				mine:   m.isMyCard(c.ID),
+			})
+		}
+	}
+	return items
+}
+
+func (m Model) isMyCard(cardID string) bool {
+	return strings.HasPrefix(cardID, "cli-"+m.participantID)
+}
+
 func (m Model) viewBrainstorm() string {
 	if m.state == nil {
 		return ""
 	}
 
+	muted := lipgloss.NewStyle().Foreground(styles.Muted)
 	columns := m.getColumns()
 	if len(columns) == 0 {
-		return styles.Subtitle.Render("No columns defined")
+		return muted.Render("No columns defined")
 	}
 
-	groupedCardIDs := m.groupedCardIDs()
-
 	var rendered []string
-	for i, col := range columns {
-		var lines []string
+	for ci, col := range columns {
+		items := m.columnBrainstormItems(col.id)
+		isActive := ci == m.activeCol
 
-		// Render groups in this column
-		for _, g := range m.groupsForColumn(col.id) {
-			groupLabel := styles.Selected.Render(fmt.Sprintf("  ┌ %s", g.Name))
-			lines = append(lines, groupLabel)
-			for _, cid := range g.CardIDs {
-				if card, ok := m.cardByID(cid); ok {
-					lines = append(lines, fmt.Sprintf("  │  %s", truncate(card.Text, 28)))
+		var lines []string
+		gi := -1 // track which group we're in for headers
+		for idx, item := range items {
+			cursor := "  "
+			if isActive && idx == m.cursor {
+				cursor = "> "
+			}
+
+			switch item.kind {
+			case "group-header":
+				gi++
+				groups := m.groupsForColumn(col.id)
+				if gi < len(groups) {
+					label := fmt.Sprintf("┌ %s", groups[gi].Name)
+					if isActive && idx == m.cursor {
+						lines = append(lines, styles.Selected.Render(cursor+label))
+					} else {
+						lines = append(lines, styles.Selected.Render("  "+label))
+					}
+				}
+			case "group-card":
+				card, ok := m.cardByID(item.cardID)
+				if !ok {
+					continue
+				}
+				text := truncate(card.Text, 28)
+				line := fmt.Sprintf("%s│  %s", cursor, text)
+				if isActive && idx == m.cursor {
+					lines = append(lines, styles.Selected.Render(line))
+				} else {
+					lines = append(lines, fmt.Sprintf("  │  %s", text))
+				}
+			case "card":
+				card, ok := m.cardByID(item.cardID)
+				if !ok {
+					continue
+				}
+				text := truncate(card.Text, 30)
+				line := fmt.Sprintf("%s• %s", cursor, text)
+				if isActive && idx == m.cursor {
+					lines = append(lines, styles.Selected.Render(line))
+				} else {
+					lines = append(lines, fmt.Sprintf("  • %s", text))
 				}
 			}
-			lines = append(lines, "  └──")
-		}
-
-		// Render ungrouped cards
-		for _, c := range m.cardsForColumn(col.id) {
-			if groupedCardIDs[c.ID] {
-				continue
-			}
-			text := truncate(c.Text, 32)
-			lines = append(lines, fmt.Sprintf("  • %s", text))
 		}
 
 		header := col.title
-		if i == m.activeCol {
+		if isActive {
 			header = styles.Selected.Render("▶ " + header)
 		}
 
 		body := strings.Join(lines, "\n")
 		if len(lines) == 0 {
-			body = lipgloss.NewStyle().Foreground(styles.Muted).Render("  (empty)")
+			body = muted.Render("  (empty)")
 		}
 
-		if m.inputMode && i == m.activeCol {
+		if m.inputMode && isActive {
 			body += fmt.Sprintf("\n\n  Add: %s▌", m.inputText)
 		}
 
 		content := header + "\n" + body
 		style := styles.Column
-		if i == m.activeCol {
+		if isActive {
 			style = style.BorderForeground(styles.Accent)
 		}
 		rendered = append(rendered, style.Render(content))
@@ -71,12 +139,11 @@ func (m Model) viewBrainstorm() string {
 
 	board := lipgloss.JoinHorizontal(lipgloss.Top, rendered...)
 
-	help := "[Tab] switch column  [a] add card  [←→] navigate  [q] quit"
+	help := "[↑↓] navigate  [Tab/←→] column  [a] add card  [d] delete yours  [q] quit"
 	if m.inputMode {
 		help = "[Enter] submit  [Esc] cancel"
 	}
 
-	muted := lipgloss.NewStyle().Foreground(styles.Muted)
 	return board + "\n\n" + muted.Render(help)
 }
 
@@ -86,21 +153,69 @@ func (m Model) handleBrainstormKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	columns := m.getColumns()
+	if len(columns) == 0 {
+		return m, nil
+	}
+
+	items := m.columnBrainstormItems(columns[m.activeCol].id)
 
 	switch msg.String() {
+	case "up", "k":
+		if m.cursor > 0 {
+			m.cursor--
+		}
+	case "down", "j":
+		if m.cursor < len(items)-1 {
+			m.cursor++
+		}
 	case "tab", "right", "l":
 		if len(columns) > 0 {
 			m.activeCol = (m.activeCol + 1) % len(columns)
+			m.cursor = 0
 		}
 	case "shift+tab", "left", "h":
 		if len(columns) > 0 {
 			m.activeCol = (m.activeCol - 1 + len(columns)) % len(columns)
+			m.cursor = 0
 		}
 	case "a":
 		m.inputMode = true
 		m.inputText = ""
+	case "d":
+		if m.cursor < len(items) {
+			item := items[m.cursor]
+			if (item.kind == "card" || item.kind == "group-card") && item.mine {
+				m.removeCard(item.cardID)
+			}
+		}
 	}
 	return m, nil
+}
+
+func (m *Model) removeCard(cardID string) {
+	if m.state == nil {
+		return
+	}
+	// Remove from cards
+	for i, c := range m.state.Cards {
+		if c.ID == cardID {
+			m.state.Cards = append(m.state.Cards[:i], m.state.Cards[i+1:]...)
+			break
+		}
+	}
+	// Remove from any group
+	for i, g := range m.state.Groups {
+		for j, cid := range g.CardIDs {
+			if cid == cardID {
+				m.state.Groups[i].CardIDs = append(g.CardIDs[:j], g.CardIDs[j+1:]...)
+				if len(m.state.Groups[i].CardIDs) < 2 {
+					m.state.Groups = append(m.state.Groups[:i], m.state.Groups[i+1:]...)
+				}
+				break
+			}
+		}
+	}
+	m.broadcastState()
 }
 
 func (m Model) handleBrainstormInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -117,11 +232,7 @@ func (m Model) handleBrainstormInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					Text:     text,
 				}
 				m.state.Cards = append(m.state.Cards, card)
-				if m.client != nil {
-					if err := m.client.SendState(m.state); err != nil {
-						m.err = err
-					}
-				}
+				m.broadcastState()
 			}
 		}
 		m.inputMode = false
