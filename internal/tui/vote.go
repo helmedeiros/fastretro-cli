@@ -10,6 +10,30 @@ import (
 	"github.com/helmedeiros/fastretro-cli/internal/styles"
 )
 
+type voteItem struct {
+	id    string
+	label string
+}
+
+// columnVoteItems returns votable items (groups + ungrouped cards) for a column.
+func (m Model) columnVoteItems(colID string) []voteItem {
+	if m.state == nil {
+		return nil
+	}
+	var items []voteItem
+	grouped := m.groupedCardIDs()
+
+	for _, g := range m.groupsForColumn(colID) {
+		items = append(items, voteItem{id: g.ID, label: g.Name})
+	}
+	for _, c := range m.cardsForColumn(colID) {
+		if !grouped[c.ID] {
+			items = append(items, voteItem{id: c.ID, label: c.Text})
+		}
+	}
+	return items
+}
+
 func (m Model) viewVote() string {
 	if m.state == nil {
 		return ""
@@ -27,40 +51,74 @@ func (m Model) viewVote() string {
 		muted.Render(fmt.Sprintf("(%d/%d votes left)", remaining, m.state.VoteBudget))))
 	b.WriteString("\n\n")
 
-	items := m.voteItems()
-	for i, item := range items {
-		cursor := "  "
-		if i == m.cursor {
-			cursor = "> "
-		}
-		votes := m.votesForItem(item.id)
-		myVotes := m.myVotesForItem(item.id)
+	columns := m.getColumns()
+	var rendered []string
 
-		line := fmt.Sprintf("%s[%d] %s", cursor, i+1, truncate(item.label, 30))
-		if votes > 0 {
-			badge := styles.VoteBadge.Render(fmt.Sprintf("+%d", votes))
-			line += "  " + badge
-		}
-		if myVotes > 0 {
-			line += muted.Render(fmt.Sprintf(" (you: %d)", myVotes))
+	for ci, col := range columns {
+		items := m.columnVoteItems(col.id)
+		isActive := ci == m.activeCol
+
+		var lines []string
+		for idx, item := range items {
+			cursor := "  "
+			if isActive && idx == m.cursor {
+				cursor = "> "
+			}
+			votes := m.votesForItem(item.id)
+			myVotes := m.myVotesForItem(item.id)
+
+			text := truncate(item.label, 22)
+			line := fmt.Sprintf("%s%s", cursor, text)
+
+			if votes > 0 {
+				line += "  " + styles.VoteBadge.Render(fmt.Sprintf("+%d", votes))
+			}
+			if myVotes > 0 {
+				line += muted.Render(fmt.Sprintf(" (you: %d)", myVotes))
+			}
+
+			if isActive && idx == m.cursor {
+				lines = append(lines, styles.Selected.Render(line))
+			} else {
+				lines = append(lines, line)
+			}
 		}
 
-		if i == m.cursor {
-			b.WriteString(styles.Selected.Render(line))
-		} else {
-			b.WriteString(line)
+		header := col.title
+		if isActive {
+			header = styles.Selected.Render("▶ " + header)
 		}
-		b.WriteString("\n")
+
+		body := strings.Join(lines, "\n")
+		if len(lines) == 0 {
+			body = muted.Render("  (no items)")
+		}
+
+		content := header + "\n" + body
+		style := styles.Column
+		if isActive {
+			style = style.BorderForeground(styles.Accent)
+		}
+		rendered = append(rendered, style.Render(content))
 	}
 
-	b.WriteString("\n")
-	b.WriteString(muted.Render("[↑↓] navigate  [Enter/Space] vote  [u] unvote  [q] quit"))
+	if len(rendered) > 0 {
+		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, rendered...))
+	}
+
+	b.WriteString("\n\n")
+	b.WriteString(muted.Render("[↑↓] navigate  [Tab/←→] column  [Enter/Space] vote  [u] unvote  [q] quit"))
 
 	return b.String()
 }
 
 func (m Model) handleVoteKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	items := m.voteItems()
+	columns := m.getColumns()
+	if len(columns) == 0 {
+		return m, nil
+	}
+
+	items := m.columnVoteItems(columns[m.activeCol].id)
 
 	switch msg.String() {
 	case "up", "k":
@@ -70,6 +128,16 @@ func (m Model) handleVoteKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "down", "j":
 		if m.cursor < len(items)-1 {
 			m.cursor++
+		}
+	case "tab", "right", "l":
+		if len(columns) > 0 {
+			m.activeCol = (m.activeCol + 1) % len(columns)
+			m.cursor = 0
+		}
+	case "shift+tab", "left", "h":
+		if len(columns) > 0 {
+			m.activeCol = (m.activeCol - 1 + len(columns)) % len(columns)
+			m.cursor = 0
 		}
 	case "enter", " ":
 		if m.cursor < len(items) && m.votesRemaining() > 0 {
@@ -89,35 +157,6 @@ func (m Model) handleVoteKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, nil
-}
-
-type voteItem struct {
-	id    string
-	label string
-}
-
-func (m Model) voteItems() []voteItem {
-	if m.state == nil {
-		return nil
-	}
-
-	var items []voteItem
-	groupedCards := make(map[string]bool)
-
-	for _, g := range m.state.Groups {
-		items = append(items, voteItem{id: g.ID, label: g.Name})
-		for _, cid := range g.CardIDs {
-			groupedCards[cid] = true
-		}
-	}
-
-	for _, c := range m.state.Cards {
-		if !groupedCards[c.ID] {
-			items = append(items, voteItem{id: c.ID, label: c.Text})
-		}
-	}
-
-	return items
 }
 
 func (m Model) votesForItem(itemID string) int {

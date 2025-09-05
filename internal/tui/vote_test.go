@@ -30,15 +30,63 @@ func testVoteModel() Model {
 	return m
 }
 
+// --- columnVoteItems ---
+
+func TestColumnVoteItems_Stop(t *testing.T) {
+	m := testVoteModel()
+	items := m.columnVoteItems("stop")
+
+	// g1 (group), no ungrouped stop cards
+	if len(items) != 1 {
+		t.Fatalf("expected 1 item (group), got %d", len(items))
+	}
+	if items[0].id != "g1" {
+		t.Errorf("expected g1, got %q", items[0].id)
+	}
+}
+
+func TestColumnVoteItems_Start(t *testing.T) {
+	m := testVoteModel()
+	items := m.columnVoteItems("start")
+
+	if len(items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(items))
+	}
+	if items[0].id != "c3" {
+		t.Errorf("expected c3, got %q", items[0].id)
+	}
+}
+
+func TestColumnVoteItems_NilState(t *testing.T) {
+	m := testModel()
+	if items := m.columnVoteItems("stop"); items != nil {
+		t.Errorf("expected nil")
+	}
+}
+
+// --- viewVote ---
+
+func TestViewVote_ShowsColumns(t *testing.T) {
+	m := testVoteModel()
+	view := m.viewVote()
+
+	if !strings.Contains(view, "stop") {
+		t.Error("expected stop column")
+	}
+	if !strings.Contains(view, "start") {
+		t.Error("expected start column")
+	}
+}
+
 func TestViewVote_ShowsItems(t *testing.T) {
 	m := testVoteModel()
 	view := m.viewVote()
 
 	if !strings.Contains(view, "Process") {
-		t.Error("expected group 'Process' in view")
+		t.Error("expected group name")
 	}
 	if !strings.Contains(view, "pair programming") {
-		t.Error("expected ungrouped card in view")
+		t.Error("expected ungrouped card")
 	}
 }
 
@@ -47,93 +95,252 @@ func TestViewVote_ShowsVoteBudget(t *testing.T) {
 	view := m.viewVote()
 
 	if !strings.Contains(view, "2/3") {
-		t.Error("expected remaining votes '2/3' in view")
+		t.Error("expected remaining votes")
 	}
 }
 
-func TestVoteItems_GroupsFirst(t *testing.T) {
+func TestViewVote_ShowsVoteCounts(t *testing.T) {
 	m := testVoteModel()
-	items := m.voteItems()
+	view := m.viewVote()
 
-	if len(items) != 2 {
-		t.Fatalf("expected 2 items (1 group + 1 ungrouped card), got %d", len(items))
-	}
-	if items[0].id != "g1" {
-		t.Errorf("first item should be group, got %q", items[0].id)
-	}
-	if items[1].id != "c3" {
-		t.Errorf("second item should be ungrouped card, got %q", items[1].id)
+	if !strings.Contains(view, "+2") {
+		t.Error("expected +2 votes on g1")
 	}
 }
 
-func TestVoteItems_NoGroups(t *testing.T) {
+func TestViewVote_ShowsHelp(t *testing.T) {
+	m := testVoteModel()
+	view := m.viewVote()
+
+	if !strings.Contains(view, "column") {
+		t.Error("expected column navigation hint")
+	}
+	if !strings.Contains(view, "vote") {
+		t.Error("expected vote hint")
+	}
+}
+
+func TestViewVote_ActiveColumn(t *testing.T) {
+	m := testVoteModel()
+	view := m.viewVote()
+
+	if !strings.Contains(view, "▶") {
+		t.Error("expected active column indicator")
+	}
+}
+
+func TestViewVote_NilState(t *testing.T) {
 	m := testModel()
-	m.state = &protocol.RetroState{
-		Cards: []protocol.Card{
-			{ID: "c1", Text: "item 1"},
-			{ID: "c2", Text: "item 2"},
-		},
-	}
-	items := m.voteItems()
-
-	if len(items) != 2 {
-		t.Fatalf("expected 2 items, got %d", len(items))
+	if view := m.viewVote(); view != "" {
+		t.Errorf("expected empty")
 	}
 }
 
-func TestVoteItems_NilState(t *testing.T) {
-	m := testModel()
-	items := m.voteItems()
+// --- handleVoteKeys navigation ---
 
-	if items != nil {
-		t.Errorf("expected nil for nil state, got %v", items)
+func TestHandleVoteKeys_Up(t *testing.T) {
+	m := testVoteModel()
+	m.cursor = 1
+
+	result, _ := m.handleVoteKeys(keyMsg("up"))
+	model := result.(Model)
+
+	if model.cursor != 0 {
+		t.Errorf("expected 0, got %d", model.cursor)
 	}
 }
+
+func TestHandleVoteKeys_Down(t *testing.T) {
+	m := testVoteModel()
+	// stop column has 1 item (g1), can't go down
+	result, _ := m.handleVoteKeys(keyMsg("down"))
+	model := result.(Model)
+
+	if model.cursor != 0 {
+		t.Errorf("expected 0 (only 1 item), got %d", model.cursor)
+	}
+}
+
+func TestHandleVoteKeys_Tab(t *testing.T) {
+	m := testVoteModel()
+
+	result, _ := m.handleVoteKeys(keyMsg("tab"))
+	model := result.(Model)
+
+	if model.activeCol != 1 {
+		t.Errorf("expected col 1, got %d", model.activeCol)
+	}
+	if model.cursor != 0 {
+		t.Error("cursor should reset")
+	}
+}
+
+func TestHandleVoteKeys_ShiftTab(t *testing.T) {
+	m := testVoteModel()
+	m.activeCol = 1
+
+	result, _ := m.handleVoteKeys(keyMsg("shift+tab"))
+	model := result.(Model)
+
+	if model.activeCol != 0 {
+		t.Errorf("expected col 0")
+	}
+}
+
+func TestHandleVoteKeys_Right(t *testing.T) {
+	m := testVoteModel()
+
+	result, _ := m.handleVoteKeys(keyMsg("right"))
+	model := result.(Model)
+
+	if model.activeCol != 1 {
+		t.Errorf("expected col 1")
+	}
+}
+
+func TestHandleVoteKeys_Left(t *testing.T) {
+	m := testVoteModel()
+	m.activeCol = 1
+
+	result, _ := m.handleVoteKeys(keyMsg("left"))
+	model := result.(Model)
+
+	if model.activeCol != 0 {
+		t.Errorf("expected col 0")
+	}
+}
+
+func TestHandleVoteKeys_VimK(t *testing.T) {
+	m := testVoteModel()
+	m.cursor = 1
+
+	result, _ := m.handleVoteKeys(keyMsg("k"))
+	model := result.(Model)
+
+	if model.cursor != 0 {
+		t.Errorf("expected 0")
+	}
+}
+
+func TestHandleVoteKeys_VimJ(t *testing.T) {
+	m := testVoteModel()
+	// Switch to start column which has 1 item
+	m.activeCol = 1
+	result, _ := m.handleVoteKeys(keyMsg("j"))
+	model := result.(Model)
+
+	if model.cursor != 0 {
+		t.Errorf("expected 0 (only 1 item)")
+	}
+}
+
+// --- vote / unvote ---
+
+func TestHandleVoteKeys_Vote(t *testing.T) {
+	m := testVoteModel()
+	initialVotes := len(m.state.Votes)
+
+	result, _ := m.handleVoteKeys(keyMsg("enter"))
+	model := result.(Model)
+
+	if len(model.state.Votes) != initialVotes+1 {
+		t.Errorf("expected %d votes, got %d", initialVotes+1, len(model.state.Votes))
+	}
+}
+
+func TestHandleVoteKeys_VoteWithSpace(t *testing.T) {
+	m := testVoteModel()
+	initialVotes := len(m.state.Votes)
+
+	result, _ := m.handleVoteKeys(keyMsg(" "))
+	model := result.(Model)
+
+	if len(model.state.Votes) != initialVotes+1 {
+		t.Errorf("expected %d votes", initialVotes+1)
+	}
+}
+
+func TestHandleVoteKeys_VoteNoBudget(t *testing.T) {
+	m := testVoteModel()
+	m.state.VoteBudget = 1 // already used 1
+	initialVotes := len(m.state.Votes)
+
+	result, _ := m.handleVoteKeys(keyMsg("enter"))
+	model := result.(Model)
+
+	if len(model.state.Votes) != initialVotes {
+		t.Error("should not add vote when exhausted")
+	}
+}
+
+func TestHandleVoteKeys_Unvote(t *testing.T) {
+	m := testVoteModel()
+	// cursor 0 = g1, p1 has voted for g1
+
+	result, _ := m.handleVoteKeys(keyMsg("u"))
+	model := result.(Model)
+
+	if model.myVotesForItem("g1") != 0 {
+		t.Error("vote should be removed")
+	}
+}
+
+func TestHandleVoteKeys_UnvoteNoVote(t *testing.T) {
+	m := testVoteModel()
+	m.activeCol = 1 // start column, c3, p1 has NOT voted
+	initialVotes := len(m.state.Votes)
+
+	result, _ := m.handleVoteKeys(keyMsg("u"))
+	model := result.(Model)
+
+	if len(model.state.Votes) != initialVotes {
+		t.Error("should not remove any vote")
+	}
+}
+
+// --- helpers ---
 
 func TestVotesForItem(t *testing.T) {
 	m := testVoteModel()
-
 	if got := m.votesForItem("g1"); got != 2 {
-		t.Errorf("votes for g1: got %d, want 2", got)
+		t.Errorf("expected 2, got %d", got)
 	}
 	if got := m.votesForItem("c3"); got != 1 {
-		t.Errorf("votes for c3: got %d, want 1", got)
+		t.Errorf("expected 1, got %d", got)
 	}
-	if got := m.votesForItem("nonexistent"); got != 0 {
-		t.Errorf("votes for nonexistent: got %d, want 0", got)
+	if got := m.votesForItem("x"); got != 0 {
+		t.Errorf("expected 0, got %d", got)
 	}
 }
 
 func TestVotesForItem_NilState(t *testing.T) {
 	m := testModel()
 	if got := m.votesForItem("c1"); got != 0 {
-		t.Errorf("expected 0 for nil state, got %d", got)
+		t.Errorf("expected 0")
 	}
 }
 
 func TestMyVotesForItem(t *testing.T) {
 	m := testVoteModel()
-
 	if got := m.myVotesForItem("g1"); got != 1 {
-		t.Errorf("my votes for g1: got %d, want 1", got)
+		t.Errorf("expected 1, got %d", got)
 	}
 	if got := m.myVotesForItem("c3"); got != 0 {
-		t.Errorf("my votes for c3: got %d, want 0", got)
+		t.Errorf("expected 0, got %d", got)
 	}
 }
 
 func TestMyVotesForItem_NilState(t *testing.T) {
 	m := testModel()
 	if got := m.myVotesForItem("c1"); got != 0 {
-		t.Errorf("expected 0 for nil state, got %d", got)
+		t.Errorf("expected 0")
 	}
 }
 
 func TestVotesRemaining(t *testing.T) {
 	m := testVoteModel()
-
 	if got := m.votesRemaining(); got != 2 {
-		t.Errorf("votes remaining: got %d, want 2", got)
+		t.Errorf("expected 2, got %d", got)
 	}
 }
 
@@ -143,57 +350,44 @@ func TestVotesRemaining_AllUsed(t *testing.T) {
 		protocol.Vote{ParticipantID: "p1", CardID: "c3"},
 		protocol.Vote{ParticipantID: "p1", CardID: "c3"},
 	)
-
 	if got := m.votesRemaining(); got != 0 {
-		t.Errorf("votes remaining: got %d, want 0", got)
+		t.Errorf("expected 0, got %d", got)
 	}
 }
 
 func TestVotesRemaining_NilState(t *testing.T) {
 	m := testModel()
 	if got := m.votesRemaining(); got != 0 {
-		t.Errorf("expected 0 for nil state, got %d", got)
+		t.Errorf("expected 0")
 	}
 }
 
 func TestRemoveMyVote(t *testing.T) {
 	m := testVoteModel()
-	initialLen := len(m.state.Votes)
-
+	initial := len(m.state.Votes)
 	m.removeMyVote("g1")
-
-	if len(m.state.Votes) != initialLen-1 {
-		t.Errorf("expected %d votes after removal, got %d", initialLen-1, len(m.state.Votes))
-	}
-
-	// Only removes one vote
-	for _, v := range m.state.Votes {
-		if v.ParticipantID == "p1" && v.CardID == "g1" {
-			t.Error("p1's vote for g1 should have been removed")
-		}
+	if len(m.state.Votes) != initial-1 {
+		t.Errorf("expected %d, got %d", initial-1, len(m.state.Votes))
 	}
 }
 
 func TestRemoveMyVote_NotFound(t *testing.T) {
 	m := testVoteModel()
-	initialLen := len(m.state.Votes)
-
+	initial := len(m.state.Votes)
 	m.removeMyVote("nonexistent")
-
-	if len(m.state.Votes) != initialLen {
-		t.Error("should not remove any votes for nonexistent item")
+	if len(m.state.Votes) != initial {
+		t.Error("should not remove")
 	}
 }
 
 func TestRemoveMyVote_NilState(t *testing.T) {
 	m := testModel()
-	m.removeMyVote("c1") // should not panic
+	m.removeMyVote("c1") // no panic
 }
 
-func TestViewVote_NilState(t *testing.T) {
-	m := testModel()
-	view := m.viewVote()
-	if view != "" {
-		t.Errorf("expected empty view for nil state, got %q", view)
+func TestViewVote_InAppView(t *testing.T) {
+	m := testVoteModel()
+	if view := m.View(); !strings.Contains(view, "VOTE") {
+		t.Error("expected VOTE in stage bar")
 	}
 }

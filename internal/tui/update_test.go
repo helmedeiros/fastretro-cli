@@ -55,13 +55,13 @@ func TestHandleVoteKeys_CursorAtTop(t *testing.T) {
 
 func TestHandleVoteKeys_CursorAtBottom(t *testing.T) {
 	m := testVoteModel()
-	items := m.voteItems()
-	m.cursor = len(items) - 1
+	// stop column has 1 item (g1), cursor 0 can't go down
+	m.cursor = 0
 
 	result, _ := m.handleVoteKeys(keyMsg("down"))
 	model := result.(Model)
 
-	if model.cursor != len(items)-1 {
+	if model.cursor != 0 {
 		t.Errorf("cursor should stay at bottom, got %d", model.cursor)
 	}
 }
