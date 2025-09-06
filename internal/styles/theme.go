@@ -44,8 +44,7 @@ var (
 	Column = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(Border).
-		Padding(1).
-		Width(35)
+		Padding(1)
 
 	VoteBadge = lipgloss.NewStyle().
 		Background(Accent).

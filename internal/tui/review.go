@@ -106,7 +106,7 @@ func (m Model) viewReview() string {
 			}
 		}
 
-		box := styles.Column.Render(strings.Join(lines, "\n"))
+		box := styles.Column.Width(m.columnWidth(len(columns))).Render(strings.Join(lines, "\n"))
 		colBoxes = append(colBoxes, box)
 	}
 

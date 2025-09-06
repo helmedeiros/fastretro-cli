@@ -130,7 +130,8 @@ func (m Model) viewBrainstorm() string {
 		}
 
 		content := header + "\n" + body
-		style := styles.Column
+		colW := m.columnWidth(len(columns))
+		style := styles.Column.Width(colW)
 		if isActive {
 			style = style.BorderForeground(styles.Accent)
 		}

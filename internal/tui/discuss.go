@@ -99,7 +99,7 @@ func (m Model) viewDiscuss() string {
 	contextCol := m.renderNoteLane("CONTEXT", contextNotes, segment == "context")
 	actionsCol := m.renderNoteLane("ACTIONS", actionNotes, segment == "actions")
 
-	colStyle := styles.Column.Width(35)
+	colStyle := styles.Column.Width(m.columnWidth(2))
 	activeColStyle := colStyle.BorderForeground(styles.Accent)
 
 	var leftBox, rightBox string

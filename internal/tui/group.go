@@ -121,7 +121,8 @@ func (m Model) viewGroup() string {
 		body := strings.Join(lines, "\n")
 		content := header + "\n" + body
 
-		style := styles.Column
+		colW := m.columnWidth(len(columns))
+		style := styles.Column.Width(colW)
 		if isActive {
 			style = style.BorderForeground(styles.Accent)
 		}
