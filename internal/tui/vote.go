@@ -82,6 +82,11 @@ func (m Model) viewVote() string {
 			} else {
 				lines = append(lines, line)
 			}
+
+			// Show sub-cards for groups
+			for _, sc := range m.subcardsForItem(item.id) {
+				lines = append(lines, muted.Render(fmt.Sprintf("      %s", truncate(sc, 22))))
+			}
 		}
 
 		header := col.title
