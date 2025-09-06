@@ -46,7 +46,7 @@ func (m Model) viewDiscuss() string {
 	// Carousel: show items with vote counts, current enlarged
 	var carouselCards []string
 	for i, id := range order {
-		label := truncate(m.labelForItem(id), 22)
+		label := m.labelForItem(id)
 		votes := m.votesForItem(id)
 		subcards := m.subcardsForItem(id)
 
@@ -54,7 +54,7 @@ func (m Model) viewDiscuss() string {
 			var lines []string
 			lines = append(lines, styles.Selected.Render(label))
 			for _, sc := range subcards {
-				lines = append(lines, styles.Subtitle.Render("  "+truncate(sc, 20)))
+				lines = append(lines, styles.Subtitle.Render("  "+sc))
 			}
 			lines = append(lines, styles.VoteBadge.Render(fmt.Sprintf("Votes: %d", votes)))
 			carouselCards = append(carouselCards, styles.ActiveCard.Render(strings.Join(lines, "\n")))
@@ -153,7 +153,7 @@ func (m Model) renderNoteLane(title string, notes []noteEntry, active bool) stri
 			if active && i == m.cursor {
 				cursor = "> "
 			}
-			text := truncate(n.Text, 30)
+			text := n.Text
 			line := fmt.Sprintf("%s%s", cursor, text)
 			if active && i == m.cursor {
 				lines = append(lines, styles.Selected.Render(line))

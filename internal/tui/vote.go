@@ -67,7 +67,7 @@ func (m Model) viewVote() string {
 			votes := m.votesForItem(item.id)
 			myVotes := m.myVotesForItem(item.id)
 
-			text := truncate(item.label, 22)
+			text := item.label
 			line := fmt.Sprintf("%s%s", cursor, text)
 
 			if votes > 0 {
@@ -85,7 +85,7 @@ func (m Model) viewVote() string {
 
 			// Show sub-cards for groups
 			for _, sc := range m.subcardsForItem(item.id) {
-				lines = append(lines, muted.Render(fmt.Sprintf("      %s", truncate(sc, 22))))
+				lines = append(lines, muted.Render(fmt.Sprintf("      %s", sc)))
 			}
 		}
 

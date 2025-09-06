@@ -96,7 +96,7 @@ func (m Model) viewGroup() string {
 				if item.grouped {
 					prefix = "│ "
 				}
-				text := truncate(item.label, 28)
+				text := item.label
 				line := fmt.Sprintf("%s%s%s", cursor, prefix, text)
 
 				if isMergeSource {

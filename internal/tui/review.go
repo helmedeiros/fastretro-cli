@@ -93,7 +93,7 @@ func (m Model) viewReview() string {
 			lines = append(lines, accent.Render(g.Name))
 			for _, cid := range g.CardIDs {
 				if card, ok := m.cardByID(cid); ok {
-					lines = append(lines, "  "+muted.Render(truncate(card.Text, 25)))
+					lines = append(lines, "  "+muted.Render(card.Text))
 				}
 			}
 			lines = append(lines, "")
@@ -102,7 +102,7 @@ func (m Model) viewReview() string {
 		// Ungrouped
 		for _, c := range m.cardsForColumn(col.id) {
 			if !grouped[c.ID] {
-				lines = append(lines, muted.Render(truncate(c.Text, 28)))
+				lines = append(lines, muted.Render(c.Text))
 			}
 		}
 

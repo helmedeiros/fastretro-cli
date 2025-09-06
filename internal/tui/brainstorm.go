@@ -93,7 +93,7 @@ func (m Model) viewBrainstorm() string {
 				if !ok {
 					continue
 				}
-				text := truncate(card.Text, 28)
+				text := card.Text
 				line := fmt.Sprintf("%s│  %s", cursor, text)
 				if isActive && idx == m.cursor {
 					lines = append(lines, styles.Selected.Render(line))
@@ -105,7 +105,7 @@ func (m Model) viewBrainstorm() string {
 				if !ok {
 					continue
 				}
-				text := truncate(card.Text, 30)
+				text := card.Text
 				line := fmt.Sprintf("%s• %s", cursor, text)
 				if isActive && idx == m.cursor {
 					lines = append(lines, styles.Selected.Render(line))
