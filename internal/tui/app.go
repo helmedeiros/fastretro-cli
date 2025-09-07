@@ -207,17 +207,9 @@ func (m Model) View() string {
 	return header + "\n\n" + body + "\n"
 }
 
-// columnWidth calculates width per column based on terminal width.
-func (m Model) columnWidth(numCols int) int {
-	if numCols <= 0 {
-		return m.width
-	}
-	// Account for border (2) + padding (2) per column, plus gaps
-	w := (m.width - 2) / numCols
-	if w < 20 {
-		w = 20
-	}
-	return w
+// centerBoard horizontally centers a rendered board block.
+func (m Model) centerBoard(board string) string {
+	return lipgloss.NewStyle().Width(m.width).Align(lipgloss.Center).Render(board)
 }
 
 var allStages = []string{"icebreaker", "brainstorm", "group", "vote", "discuss", "review", "close"}

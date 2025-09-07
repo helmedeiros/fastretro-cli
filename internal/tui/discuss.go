@@ -99,7 +99,7 @@ func (m Model) viewDiscuss() string {
 	contextCol := m.renderNoteLane("CONTEXT", contextNotes, segment == "context")
 	actionsCol := m.renderNoteLane("ACTIONS", actionNotes, segment == "actions")
 
-	colStyle := styles.Column.Width(m.columnWidth(2))
+	colStyle := styles.Column
 	activeColStyle := colStyle.BorderForeground(styles.Accent)
 
 	var leftBox, rightBox string
@@ -111,7 +111,7 @@ func (m Model) viewDiscuss() string {
 		rightBox = activeColStyle.Render(actionsCol)
 	}
 
-	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, leftBox, rightBox))
+	b.WriteString(m.centerBoard(lipgloss.JoinHorizontal(lipgloss.Top, leftBox, rightBox)))
 	b.WriteString("\n")
 
 	// Input mode

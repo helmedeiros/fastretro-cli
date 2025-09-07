@@ -100,8 +100,7 @@ func (m Model) viewVote() string {
 		}
 
 		content := header + "\n" + body
-		colW := m.columnWidth(len(columns))
-		style := styles.Column.Width(colW)
+		style := styles.Column
 		if isActive {
 			style = style.BorderForeground(styles.Accent)
 		}
@@ -109,7 +108,7 @@ func (m Model) viewVote() string {
 	}
 
 	if len(rendered) > 0 {
-		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, rendered...))
+		b.WriteString(m.centerBoard(lipgloss.JoinHorizontal(lipgloss.Top, rendered...)))
 	}
 
 	b.WriteString("\n\n")

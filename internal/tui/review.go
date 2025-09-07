@@ -106,12 +106,12 @@ func (m Model) viewReview() string {
 			}
 		}
 
-		box := styles.Column.Width(m.columnWidth(len(columns))).Render(strings.Join(lines, "\n"))
+		box := styles.Column.Render(strings.Join(lines, "\n"))
 		colBoxes = append(colBoxes, box)
 	}
 
 	if len(colBoxes) > 0 {
-		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, colBoxes...))
+		b.WriteString(m.centerBoard(lipgloss.JoinHorizontal(lipgloss.Top, colBoxes...)))
 		b.WriteString("\n")
 	}
 

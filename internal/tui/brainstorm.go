@@ -130,15 +130,14 @@ func (m Model) viewBrainstorm() string {
 		}
 
 		content := header + "\n" + body
-		colW := m.columnWidth(len(columns))
-		style := styles.Column.Width(colW)
+		style := styles.Column
 		if isActive {
 			style = style.BorderForeground(styles.Accent)
 		}
 		rendered = append(rendered, style.Render(content))
 	}
 
-	board := lipgloss.JoinHorizontal(lipgloss.Top, rendered...)
+	board := m.centerBoard(lipgloss.JoinHorizontal(lipgloss.Top, rendered...))
 
 	help := "[↑↓] navigate  [Tab/←→] column  [a] add card  [d] delete yours  [q] quit"
 	if m.inputMode {
