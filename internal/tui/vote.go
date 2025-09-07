@@ -52,7 +52,8 @@ func (m Model) viewVote() string {
 	b.WriteString("\n\n")
 
 	columns := m.getColumns()
-	var rendered []string
+	var contents []string
+	var colStyles []lipgloss.Style
 
 	for ci, col := range columns {
 		items := m.columnVoteItems(col.id)
@@ -99,16 +100,16 @@ func (m Model) viewVote() string {
 			body = muted.Render("  (no items)")
 		}
 
-		content := header + "\n" + body
+		contents = append(contents, header+"\n"+body)
 		style := styles.Column
 		if isActive {
 			style = style.BorderForeground(styles.Accent)
 		}
-		rendered = append(rendered, style.Render(content))
+		colStyles = append(colStyles, style)
 	}
 
-	if len(rendered) > 0 {
-		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, rendered...))
+	if len(contents) > 0 {
+		b.WriteString(joinColumnsEqualHeight(contents, colStyles))
 	}
 
 	b.WriteString("\n\n")

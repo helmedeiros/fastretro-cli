@@ -102,16 +102,17 @@ func (m Model) viewDiscuss() string {
 	colStyle := styles.Column
 	activeColStyle := colStyle.BorderForeground(styles.Accent)
 
-	var leftBox, rightBox string
+	var laneContents []string
+	var laneStyles []lipgloss.Style
 	if segment == "context" {
-		leftBox = activeColStyle.Render(contextCol)
-		rightBox = colStyle.Render(actionsCol)
+		laneContents = []string{contextCol, actionsCol}
+		laneStyles = []lipgloss.Style{activeColStyle, colStyle}
 	} else {
-		leftBox = colStyle.Render(contextCol)
-		rightBox = activeColStyle.Render(actionsCol)
+		laneContents = []string{contextCol, actionsCol}
+		laneStyles = []lipgloss.Style{colStyle, activeColStyle}
 	}
 
-	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, leftBox, rightBox))
+	b.WriteString(joinColumnsEqualHeight(laneContents, laneStyles))
 	b.WriteString("\n")
 
 	// Input mode

@@ -68,7 +68,8 @@ func (m Model) viewGroup() string {
 		return styles.Subtitle.Render("No cards to group")
 	}
 
-	var rendered []string
+	var contents []string
+	var colStyles []lipgloss.Style
 	for ci, col := range columns {
 		items := m.columnGroupItems(col.id)
 		isActive := ci == m.activeCol
@@ -121,14 +122,15 @@ func (m Model) viewGroup() string {
 		body := strings.Join(lines, "\n")
 		content := header + "\n" + body
 
+		contents = append(contents, content)
 		style := styles.Column
 		if isActive {
 			style = style.BorderForeground(styles.Accent)
 		}
-		rendered = append(rendered, style.Render(content))
+		colStyles = append(colStyles, style)
 	}
 
-	board := lipgloss.JoinHorizontal(lipgloss.Top, rendered...)
+	board := joinColumnsEqualHeight(contents, colStyles)
 
 	var help string
 	if m.inputMode {

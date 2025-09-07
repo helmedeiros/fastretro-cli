@@ -61,7 +61,8 @@ func (m Model) viewClose() string {
 	columns := m.getColumns()
 	grouped := m.groupedCardIDs()
 
-	var colBoxes []string
+	var boardContents []string
+	var boardStyles []lipgloss.Style
 	for _, col := range columns {
 		var lines []string
 		lines = append(lines, accent.Render(col.title))
@@ -83,12 +84,12 @@ func (m Model) viewClose() string {
 			}
 		}
 
-		box := styles.Column.Render(strings.Join(lines, "\n"))
-		colBoxes = append(colBoxes, box)
+		boardContents = append(boardContents, strings.Join(lines, "\n"))
+		boardStyles = append(boardStyles, styles.Column)
 	}
 
-	if len(colBoxes) > 0 {
-		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, colBoxes...))
+	if len(boardContents) > 0 {
+		b.WriteString(joinColumnsEqualHeight(boardContents, boardStyles))
 		b.WriteString("\n")
 	}
 

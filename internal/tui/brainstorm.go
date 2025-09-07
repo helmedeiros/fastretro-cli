@@ -63,7 +63,8 @@ func (m Model) viewBrainstorm() string {
 		return muted.Render("No columns defined")
 	}
 
-	var rendered []string
+	var contents []string
+	var colStyles []lipgloss.Style
 	for ci, col := range columns {
 		items := m.columnBrainstormItems(col.id)
 		isActive := ci == m.activeCol
@@ -130,14 +131,15 @@ func (m Model) viewBrainstorm() string {
 		}
 
 		content := header + "\n" + body
+		contents = append(contents, content)
 		style := styles.Column
 		if isActive {
 			style = style.BorderForeground(styles.Accent)
 		}
-		rendered = append(rendered, style.Render(content))
+		colStyles = append(colStyles, style)
 	}
 
-	board := lipgloss.JoinHorizontal(lipgloss.Top, rendered...)
+	board := joinColumnsEqualHeight(contents, colStyles)
 
 	help := "[↑↓] navigate  [Tab/←→] column  [a] add card  [d] delete yours  [q] quit"
 	if m.inputMode {
