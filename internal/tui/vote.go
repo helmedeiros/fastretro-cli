@@ -108,7 +108,7 @@ func (m Model) viewVote() string {
 	}
 
 	if len(rendered) > 0 {
-		b.WriteString(m.centerBoard(lipgloss.JoinHorizontal(lipgloss.Top, rendered...)))
+		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, rendered...))
 	}
 
 	b.WriteString("\n\n")

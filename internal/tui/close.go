@@ -88,7 +88,7 @@ func (m Model) viewClose() string {
 	}
 
 	if len(colBoxes) > 0 {
-		b.WriteString(m.centerBoard(lipgloss.JoinHorizontal(lipgloss.Top, colBoxes...)))
+		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, colBoxes...))
 		b.WriteString("\n")
 	}
 

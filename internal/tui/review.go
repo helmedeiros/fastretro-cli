@@ -111,7 +111,7 @@ func (m Model) viewReview() string {
 	}
 
 	if len(colBoxes) > 0 {
-		b.WriteString(m.centerBoard(lipgloss.JoinHorizontal(lipgloss.Top, colBoxes...)))
+		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, colBoxes...))
 		b.WriteString("\n")
 	}
 

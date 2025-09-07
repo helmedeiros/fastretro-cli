@@ -128,7 +128,7 @@ func (m Model) viewGroup() string {
 		rendered = append(rendered, style.Render(content))
 	}
 
-	board := m.centerBoard(lipgloss.JoinHorizontal(lipgloss.Top, rendered...))
+	board := lipgloss.JoinHorizontal(lipgloss.Top, rendered...)
 
 	var help string
 	if m.inputMode {

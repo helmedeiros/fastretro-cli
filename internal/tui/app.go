@@ -207,11 +207,6 @@ func (m Model) View() string {
 	return header + "\n\n" + body + "\n"
 }
 
-// centerBoard horizontally centers a rendered board block.
-func (m Model) centerBoard(board string) string {
-	return lipgloss.NewStyle().Width(m.width).Align(lipgloss.Center).Render(board)
-}
-
 var allStages = []string{"icebreaker", "brainstorm", "group", "vote", "discuss", "review", "close"}
 
 func (m Model) renderStageBar() string {

@@ -111,7 +111,7 @@ func (m Model) viewDiscuss() string {
 		rightBox = activeColStyle.Render(actionsCol)
 	}
 
-	b.WriteString(m.centerBoard(lipgloss.JoinHorizontal(lipgloss.Top, leftBox, rightBox)))
+	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, leftBox, rightBox))
 	b.WriteString("\n")
 
 	// Input mode
