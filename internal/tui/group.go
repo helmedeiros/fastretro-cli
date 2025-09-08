@@ -120,7 +120,7 @@ func (m Model) viewGroup() string {
 			header = styles.Selected.Render("▶ " + header)
 		}
 		if col.description != "" {
-			header += "\n" + muted.Render(col.description)
+			header += "\n" + muted.Render(col.description) + "\n"
 		}
 
 		body := strings.Join(lines, "\n")
