@@ -226,3 +226,84 @@ func TestHandleWS_NavigateStage_NoState(t *testing.T) {
 		t.Error("state should remain nil when navigating without existing state")
 	}
 }
+
+func TestRenderStageBar(t *testing.T) {
+	m := testBrainstormModel()
+	bar := m.renderStageBar()
+
+	if !strings.Contains(bar, "BRAINSTORM") {
+		t.Error("expected BRAINSTORM in stage bar")
+	}
+	if !strings.Contains(bar, "VOTE") {
+		t.Error("expected other stages in bar")
+	}
+}
+
+func TestRenderStageBar_NilState(t *testing.T) {
+	m := testModel()
+	bar := m.renderStageBar()
+
+	if bar != "" {
+		t.Errorf("expected empty for nil state, got %q", bar)
+	}
+}
+
+func TestView_WithMetaName(t *testing.T) {
+	m := testModel()
+	m.participantID = "p1"
+	m.state = &protocol.RetroState{
+		Stage: "brainstorm",
+		Meta:  protocol.RetroMeta{Name: "Sprint 42", Date: "2025-09-07"},
+		Cards: []protocol.Card{{ID: "c1", ColumnID: "stop", Text: "x"}},
+	}
+	view := m.View()
+
+	if !strings.Contains(view, "Sprint 42") {
+		t.Error("expected retro name in header")
+	}
+	if !strings.Contains(view, "2025-09-07") {
+		t.Error("expected date in header")
+	}
+}
+
+func TestView_FallbackTitle(t *testing.T) {
+	m := testModel()
+	m.participantID = "p1"
+	m.state = &protocol.RetroState{Stage: "brainstorm"}
+	view := m.View()
+
+	if !strings.Contains(view, "fastRetro CLI") {
+		t.Error("expected fallback title")
+	}
+}
+
+func TestHandleKey_DiscussStage_InKeys(t *testing.T) {
+	m := testDiscussModel()
+
+	result, _ := m.handleKey(keyMsg("a"))
+	model := result.(Model)
+
+	if !model.inputMode {
+		t.Error("expected discuss handler")
+	}
+}
+
+func TestHandleKey_ReviewStage_InKeys(t *testing.T) {
+	m := testReviewModel()
+
+	result, _ := m.handleKey(keyMsg("o"))
+	model := result.(Model)
+
+	if !model.inputMode {
+		t.Error("expected review handler")
+	}
+}
+
+func TestHandleKey_GroupStage(t *testing.T) {
+	m := testGroupModel()
+
+	result, _ := m.handleKey(keyMsg(":"))
+	// In group stage, ":" no longer enters command mode since redesign
+	// but it shouldn't panic
+	_ = result
+}

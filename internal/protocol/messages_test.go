@@ -190,3 +190,18 @@ func TestStateMessage_RoundTrip(t *testing.T) {
 		t.Errorf("expected 1 vote, got %d", len(msg.State.Votes))
 	}
 }
+
+func TestRequestStateMessage(t *testing.T) {
+	data, err := RequestStateMessage()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var result map[string]string
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+	if result["type"] != "request-state" {
+		t.Errorf("expected type 'request-state', got %v", result["type"])
+	}
+}

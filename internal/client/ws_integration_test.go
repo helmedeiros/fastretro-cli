@@ -219,6 +219,34 @@ func TestSendState(t *testing.T) {
 	}
 }
 
+func TestRequestState(t *testing.T) {
+	received := make(chan string, 1)
+	srv := startTestServer(t, func(conn *websocket.Conn) {
+		_, data, err := conn.ReadMessage()
+		if err == nil {
+			received <- string(data)
+		}
+	})
+	defer srv.Close()
+
+	wsURL := strings.Replace(srv.URL, "http://", "", 1)
+	c, err := Connect("TESTROOM", "http://"+wsURL)
+	if err != nil {
+		t.Fatalf("connect error: %v", err)
+	}
+	defer c.Close()
+
+	err = c.RequestState()
+	if err != nil {
+		t.Fatalf("request state error: %v", err)
+	}
+
+	msg := <-received
+	if !strings.Contains(msg, "request-state") {
+		t.Errorf("expected 'request-state' in message, got %q", msg)
+	}
+}
+
 func TestClose(t *testing.T) {
 	srv := startTestServer(t, func(conn *websocket.Conn) {
 		conn.ReadMessage()
