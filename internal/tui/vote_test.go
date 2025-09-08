@@ -70,11 +70,11 @@ func TestViewVote_ShowsColumns(t *testing.T) {
 	m := testVoteModel()
 	view := m.viewVote()
 
-	if !strings.Contains(view, "stop") {
-		t.Error("expected stop column")
+	if !strings.Contains(view, "Stop") {
+		t.Error("expected Stop column")
 	}
-	if !strings.Contains(view, "start") {
-		t.Error("expected start column")
+	if !strings.Contains(view, "Start") {
+		t.Error("expected Start column")
 	}
 }
 

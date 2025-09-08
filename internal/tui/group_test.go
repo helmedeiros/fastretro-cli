@@ -91,11 +91,11 @@ func TestViewGroup_ShowsColumns(t *testing.T) {
 	m := testGroupModel()
 	view := m.viewGroup()
 
-	if !strings.Contains(view, "stop") {
-		t.Error("expected stop column")
+	if !strings.Contains(view, "Stop") {
+		t.Error("expected Stop column")
 	}
-	if !strings.Contains(view, "start") {
-		t.Error("expected start column")
+	if !strings.Contains(view, "Start") {
+		t.Error("expected Start column")
 	}
 }
 

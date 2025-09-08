@@ -94,6 +94,9 @@ func (m Model) viewVote() string {
 		if isActive {
 			header = styles.Selected.Render("▶ " + header)
 		}
+		if col.description != "" {
+			header += "\n" + muted.Render(col.description)
+		}
 
 		body := strings.Join(lines, "\n")
 		if len(lines) == 0 {

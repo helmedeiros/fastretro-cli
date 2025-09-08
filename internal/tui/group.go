@@ -114,9 +114,13 @@ func (m Model) viewGroup() string {
 			lines = append(lines, styles.Subtitle.Render("  (empty)"))
 		}
 
+		muted := lipgloss.NewStyle().Foreground(styles.Muted)
 		header := col.title
 		if isActive {
 			header = styles.Selected.Render("▶ " + header)
+		}
+		if col.description != "" {
+			header += "\n" + muted.Render(col.description)
 		}
 
 		body := strings.Join(lines, "\n")

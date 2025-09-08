@@ -120,6 +120,9 @@ func (m Model) viewBrainstorm() string {
 		if isActive {
 			header = styles.Selected.Render("▶ " + header)
 		}
+		if col.description != "" {
+			header += "\n" + muted.Render(col.description)
+		}
 
 		body := strings.Join(lines, "\n")
 		if len(lines) == 0 {
@@ -255,24 +258,47 @@ func (m Model) handleBrainstormInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 type columnInfo struct {
-	id    string
-	title string
+	id          string
+	title       string
+	description string
 }
 
 func (m Model) getColumns() []columnInfo {
 	if m.state == nil {
 		return nil
 	}
+
+	templateID := m.state.Meta.TemplateID
+	tmpl := protocol.GetTemplate(templateID)
+
+	// If template has columns, use that order and metadata
+	if len(tmpl.Columns) > 0 {
+		var cols []columnInfo
+		for _, ct := range tmpl.Columns {
+			cols = append(cols, columnInfo{id: ct.ID, title: ct.Title, description: ct.Description})
+		}
+		return cols
+	}
+
+	// Fallback: derive from cards
 	seen := make(map[string]bool)
 	var cols []columnInfo
 	for _, c := range m.state.Cards {
 		if !seen[c.ColumnID] {
 			seen[c.ColumnID] = true
-			cols = append(cols, columnInfo{id: c.ColumnID, title: c.ColumnID})
+			ct, ok := protocol.GetColumnTemplate(templateID, c.ColumnID)
+			if ok {
+				cols = append(cols, columnInfo{id: ct.ID, title: ct.Title, description: ct.Description})
+			} else {
+				cols = append(cols, columnInfo{id: c.ColumnID, title: c.ColumnID})
+			}
 		}
 	}
 	if len(cols) == 0 {
-		cols = []columnInfo{{id: "stop", title: "Stop"}, {id: "start", title: "Start"}}
+		cols = []columnInfo{
+			{id: "stop", title: "Stop", description: "What factors are slowing us down or holding us back?"},
+			{id: "start", title: "Start", description: "What factors are driving us forward and enabling our success?"},
+		}
 	}
 	return cols
 }
