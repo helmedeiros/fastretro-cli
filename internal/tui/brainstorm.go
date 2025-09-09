@@ -72,9 +72,9 @@ func (m Model) viewBrainstorm() string {
 		var lines []string
 		gi := -1 // track which group we're in for headers
 		for idx, item := range items {
-			cursor := "  "
+			cursor := " "
 			if isActive && idx == m.cursor {
-				cursor = "> "
+				cursor = ">"
 			}
 
 			switch item.kind {
@@ -86,7 +86,7 @@ func (m Model) viewBrainstorm() string {
 					if isActive && idx == m.cursor {
 						lines = append(lines, styles.Selected.Render(cursor+label))
 					} else {
-						lines = append(lines, styles.Selected.Render("  "+label))
+						lines = append(lines, styles.Selected.Render(" "+label))
 					}
 				}
 			case "group-card":
@@ -99,7 +99,7 @@ func (m Model) viewBrainstorm() string {
 				if isActive && idx == m.cursor {
 					lines = append(lines, styles.Selected.Render(line))
 				} else {
-					lines = append(lines, fmt.Sprintf("  │  %s", text))
+					lines = append(lines, fmt.Sprintf(" │ %s", text))
 				}
 			case "card":
 				card, ok := m.cardByID(item.cardID)
@@ -111,7 +111,7 @@ func (m Model) viewBrainstorm() string {
 				if isActive && idx == m.cursor {
 					lines = append(lines, styles.Selected.Render(line))
 				} else {
-					lines = append(lines, fmt.Sprintf("  • %s", text))
+					lines = append(lines, fmt.Sprintf(" • %s", text))
 				}
 			}
 		}
@@ -126,7 +126,7 @@ func (m Model) viewBrainstorm() string {
 
 		body := strings.Join(lines, "\n")
 		if len(lines) == 0 {
-			body = muted.Render("  (empty)")
+			body = muted.Render("(empty)")
 		}
 
 		if m.inputMode && isActive {

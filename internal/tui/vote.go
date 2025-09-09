@@ -61,9 +61,9 @@ func (m Model) viewVote() string {
 
 		var lines []string
 		for idx, item := range items {
-			cursor := "  "
+			cursor := " "
 			if isActive && idx == m.cursor {
-				cursor = "> "
+				cursor = ">"
 			}
 			votes := m.votesForItem(item.id)
 			myVotes := m.myVotesForItem(item.id)
@@ -86,7 +86,7 @@ func (m Model) viewVote() string {
 
 			// Show sub-cards for groups
 			for _, sc := range m.subcardsForItem(item.id) {
-				lines = append(lines, muted.Render(fmt.Sprintf("      %s", sc)))
+				lines = append(lines, muted.Render(fmt.Sprintf("  %s", sc)))
 			}
 		}
 
@@ -100,7 +100,7 @@ func (m Model) viewVote() string {
 
 		body := strings.Join(lines, "\n")
 		if len(lines) == 0 {
-			body = muted.Render("  (no items)")
+			body = muted.Render("(no items)")
 		}
 
 		contents = append(contents, header+"\n"+body)
