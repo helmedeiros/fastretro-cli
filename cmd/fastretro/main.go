@@ -24,6 +24,45 @@ func baseDir() string {
 var rootCmd = &cobra.Command{
 	Use:   "fastretro",
 	Short: "Terminal client for fastRetro retrospective sessions",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		reg := storage.NewJSONRegistryRepo(baseDir())
+		entries, err := reg.List()
+		if err != nil {
+			return err
+		}
+
+		// Get or create selected team
+		selectedID, _ := reg.SelectedTeamID()
+		var entry domain.TeamEntry
+
+		if selectedID != "" {
+			for _, e := range entries {
+				if e.ID == selectedID {
+					entry = e
+					break
+				}
+			}
+		}
+
+		// If no team selected, prompt to create
+		if entry.ID == "" {
+			if len(entries) > 0 {
+				entry = entries[0]
+				reg.SetSelectedTeamID(entry.ID)
+			} else {
+				id := fmt.Sprintf("t-%d", time.Now().UnixMilli())
+				name := "My Team"
+				entries, _ = domain.AddTeamEntry(entries, id, name, time.Now().Format(time.RFC3339))
+				reg.Save(entries)
+				reg.SetSelectedTeamID(id)
+				entry = entries[0]
+			}
+		}
+
+		p := tea.NewProgram(tui.NewHomeModel(reg, entry), tea.WithAltScreen())
+		_, err = p.Run()
+		return err
+	},
 }
 
 var joinCmd = &cobra.Command{
