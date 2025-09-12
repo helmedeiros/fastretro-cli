@@ -3,14 +3,23 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/helmedeiros/fastretro-cli/internal/client"
+	"github.com/helmedeiros/fastretro-cli/internal/domain"
+	"github.com/helmedeiros/fastretro-cli/internal/storage"
 	"github.com/helmedeiros/fastretro-cli/internal/tui"
 	"github.com/spf13/cobra"
 )
 
 var serverURL string
+
+func baseDir() string {
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".fastretro")
+}
 
 var rootCmd = &cobra.Command{
 	Use:   "fastretro",
@@ -34,9 +43,122 @@ var joinCmd = &cobra.Command{
 	},
 }
 
+// --- team commands ---
+
+var teamCmd = &cobra.Command{
+	Use:   "team",
+	Short: "Manage teams",
+}
+
+var teamListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List all teams",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		reg := storage.NewJSONRegistryRepo(baseDir())
+		entries, err := reg.List()
+		if err != nil {
+			return err
+		}
+		selectedID, _ := reg.SelectedTeamID()
+		if len(entries) == 0 {
+			fmt.Println("No teams. Create one with: fastretro team create <name>")
+			return nil
+		}
+		for _, e := range entries {
+			marker := "  "
+			if e.ID == selectedID {
+				marker = "* "
+			}
+			fmt.Printf("%s%s  (created %s)\n", marker, e.Name, e.CreatedAt)
+		}
+		return nil
+	},
+}
+
+var teamCreateCmd = &cobra.Command{
+	Use:   "create [name]",
+	Short: "Create a new team",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		reg := storage.NewJSONRegistryRepo(baseDir())
+		entries, err := reg.List()
+		if err != nil {
+			return err
+		}
+		id := fmt.Sprintf("t-%d", time.Now().UnixMilli())
+		entries, err = domain.AddTeamEntry(entries, id, args[0], time.Now().Format(time.RFC3339))
+		if err != nil {
+			return err
+		}
+		if err := reg.Save(entries); err != nil {
+			return err
+		}
+		// Auto-select if first team
+		if len(entries) == 1 {
+			reg.SetSelectedTeamID(id)
+		}
+		fmt.Printf("Created team %q\n", args[0])
+		return nil
+	},
+}
+
+var teamSelectCmd = &cobra.Command{
+	Use:   "select [name]",
+	Short: "Select the active team",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		reg := storage.NewJSONRegistryRepo(baseDir())
+		entries, err := reg.List()
+		if err != nil {
+			return err
+		}
+		entry, ok := domain.FindTeamEntryByName(entries, args[0])
+		if !ok {
+			return fmt.Errorf("team %q not found", args[0])
+		}
+		if err := reg.SetSelectedTeamID(entry.ID); err != nil {
+			return err
+		}
+		fmt.Printf("Selected team %q\n", entry.Name)
+		return nil
+	},
+}
+
+var teamDeleteCmd = &cobra.Command{
+	Use:   "delete [name]",
+	Short: "Delete a team",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		reg := storage.NewJSONRegistryRepo(baseDir())
+		entries, err := reg.List()
+		if err != nil {
+			return err
+		}
+		entry, ok := domain.FindTeamEntryByName(entries, args[0])
+		if !ok {
+			return fmt.Errorf("team %q not found", args[0])
+		}
+		entries = domain.RemoveTeamEntry(entries, entry.ID)
+		if err := reg.Save(entries); err != nil {
+			return err
+		}
+		// Clear selection if deleted team was selected
+		selectedID, _ := reg.SelectedTeamID()
+		if selectedID == entry.ID {
+			reg.SetSelectedTeamID("")
+		}
+		// Remove team data directory
+		teamDir := reg.TeamDir(entry.ID)
+		os.RemoveAll(teamDir)
+		fmt.Printf("Deleted team %q\n", entry.Name)
+		return nil
+	},
+}
+
 func init() {
 	joinCmd.Flags().StringVarP(&serverURL, "server", "s", "http://localhost:5173", "Server URL")
-	rootCmd.AddCommand(joinCmd)
+	teamCmd.AddCommand(teamListCmd, teamCreateCmd, teamSelectCmd, teamDeleteCmd)
+	rootCmd.AddCommand(joinCmd, teamCmd)
 }
 
 func main() {
