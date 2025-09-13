@@ -311,7 +311,9 @@ func (m HomeModel) View() string {
 		b.WriteString(muted.Render("  [Enter] save  [Esc] cancel"))
 	} else {
 		b.WriteString("\n")
-		b.WriteString(muted.Render("[Tab] section  [a] add  [d] delete  [e] edit  [Enter] toggle done  [q] quit"))
+		b.WriteString(muted.Render("[Tab] section  [a] add  [d] delete  [e] edit  [Enter] toggle done"))
+		b.WriteString("\n")
+		b.WriteString(muted.Render("[j] join retro  [q] quit"))
 	}
 
 	return b.String()
