@@ -115,8 +115,8 @@ func (m ShellModel) updateJoinInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.joinInput = m.joinInput[:len(m.joinInput)-1]
 			}
 		default:
-			if len(msg.String()) == 1 {
-				m.joinInput += msg.String()
+			if len(msg.Runes) > 0 {
+				m.joinInput += string(msg.Runes)
 			}
 		}
 	}
