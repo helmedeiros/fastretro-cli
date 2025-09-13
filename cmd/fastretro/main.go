@@ -59,7 +59,7 @@ var rootCmd = &cobra.Command{
 			}
 		}
 
-		p := tea.NewProgram(tui.NewHomeModel(reg, entry), tea.WithAltScreen())
+		p := tea.NewProgram(tui.NewShellModel(reg, entry, serverURL), tea.WithAltScreen())
 		_, err = p.Run()
 		return err
 	},
@@ -195,7 +195,7 @@ var teamDeleteCmd = &cobra.Command{
 }
 
 func init() {
-	joinCmd.Flags().StringVarP(&serverURL, "server", "s", "http://localhost:5173", "Server URL")
+	rootCmd.PersistentFlags().StringVarP(&serverURL, "server", "s", "http://localhost:5173", "Server URL")
 	teamCmd.AddCommand(teamListCmd, teamCreateCmd, teamSelectCmd, teamDeleteCmd)
 	rootCmd.AddCommand(joinCmd, teamCmd)
 }
