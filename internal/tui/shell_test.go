@@ -239,3 +239,172 @@ func TestShell_JKeyIgnoredDuringHomeInput(t *testing.T) {
 		t.Error("j during input should not trigger join")
 	}
 }
+
+// --- New retro flow ---
+
+func TestShell_NKeyOpensNewRetro(t *testing.T) {
+	m := testShellModel(t)
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("n")})
+	shell := result.(ShellModel)
+	if shell.mode != ModeNewRetro {
+		t.Errorf("expected ModeNewRetro, got %d", shell.mode)
+	}
+}
+
+func TestShell_NKeyIgnoredDuringInput(t *testing.T) {
+	m := testShellModel(t)
+	m.home.inputMode = true
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("n")})
+	shell := result.(ShellModel)
+	if shell.mode != ModeHome {
+		t.Error("n during input should not trigger new retro")
+	}
+}
+
+func TestShell_NewRetro_NavigateTemplates(t *testing.T) {
+	m := testShellModel(t)
+	m.mode = ModeNewRetro
+
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+	shell := result.(ShellModel)
+	if shell.templateCursor != 1 {
+		t.Errorf("expected 1, got %d", shell.templateCursor)
+	}
+
+	result, _ = shell.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("k")})
+	shell = result.(ShellModel)
+	if shell.templateCursor != 0 {
+		t.Errorf("expected 0, got %d", shell.templateCursor)
+	}
+}
+
+func TestShell_NewRetro_EscReturnsHome(t *testing.T) {
+	m := testShellModel(t)
+	m.mode = ModeNewRetro
+
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	shell := result.(ShellModel)
+	if shell.mode != ModeHome {
+		t.Error("expected ModeHome")
+	}
+}
+
+func TestShell_NewRetro_EnterShowsNameInput(t *testing.T) {
+	m := testShellModel(t)
+	m.mode = ModeNewRetro
+
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	shell := result.(ShellModel)
+	if !shell.retroNameInput {
+		t.Error("expected name input mode")
+	}
+}
+
+func TestShell_NewRetro_TypeName(t *testing.T) {
+	m := testShellModel(t)
+	m.mode = ModeNewRetro
+	m.retroNameInput = true
+
+	for _, ch := range "Sprint 1" {
+		result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{ch}})
+		m = result.(ShellModel)
+	}
+	if m.retroName != "Sprint 1" {
+		t.Errorf("got %q", m.retroName)
+	}
+}
+
+func TestShell_NewRetro_StartRetro(t *testing.T) {
+	m := testShellModel(t)
+	m.mode = ModeNewRetro
+	m.retroNameInput = true
+	m.retroName = "Sprint 42"
+
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	shell := result.(ShellModel)
+
+	if shell.mode != ModeSession {
+		t.Errorf("expected ModeSession, got %d", shell.mode)
+	}
+	if shell.session.state == nil {
+		t.Fatal("session state should be set")
+	}
+	if shell.session.state.Meta.Name != "Sprint 42" {
+		t.Errorf("got %q", shell.session.state.Meta.Name)
+	}
+	if shell.session.state.Meta.TemplateID != "start-stop" {
+		t.Errorf("expected start-stop, got %q", shell.session.state.Meta.TemplateID)
+	}
+	if len(shell.session.state.Participants) != 1 {
+		t.Errorf("expected 1 participant (Alice), got %d", len(shell.session.state.Participants))
+	}
+}
+
+func TestShell_NewRetro_DefaultName(t *testing.T) {
+	m := testShellModel(t)
+	m.mode = ModeNewRetro
+	m.retroNameInput = true
+	m.retroName = "" // empty = use template name
+
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	shell := result.(ShellModel)
+	if shell.session.state.Meta.Name != "Start / Stop" {
+		t.Errorf("expected template name, got %q", shell.session.state.Meta.Name)
+	}
+}
+
+func TestShell_NewRetro_NameBackspace(t *testing.T) {
+	m := testShellModel(t)
+	m.mode = ModeNewRetro
+	m.retroNameInput = true
+	m.retroName = "abc"
+
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	shell := result.(ShellModel)
+	if shell.retroName != "ab" {
+		t.Errorf("got %q", shell.retroName)
+	}
+}
+
+func TestShell_NewRetro_NameEscBack(t *testing.T) {
+	m := testShellModel(t)
+	m.mode = ModeNewRetro
+	m.retroNameInput = true
+
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	shell := result.(ShellModel)
+	if shell.retroNameInput {
+		t.Error("should exit name input")
+	}
+	if shell.mode != ModeNewRetro {
+		t.Error("should stay in new retro (template picker)")
+	}
+}
+
+func TestShell_ViewNewRetro_TemplatePicker(t *testing.T) {
+	m := testShellModel(t)
+	m.mode = ModeNewRetro
+	view := m.View()
+
+	if !strings.Contains(view, "New Retrospective") {
+		t.Error("expected header")
+	}
+	if !strings.Contains(view, "Start / Stop") {
+		t.Error("expected template name")
+	}
+	if !strings.Contains(view, "Starfish") {
+		t.Error("expected all templates listed")
+	}
+}
+
+func TestShell_ViewNewRetro_NameInput(t *testing.T) {
+	m := testShellModel(t)
+	m.mode = ModeNewRetro
+	m.retroNameInput = true
+	m.retroName = "My Retro"
+	view := m.View()
+
+	if !strings.Contains(view, "My Retro") {
+		t.Error("expected name input")
+	}
+}
