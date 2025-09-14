@@ -117,8 +117,8 @@ func (m Model) handleJoinInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.inputText = m.inputText[:len(m.inputText)-1]
 		}
 	default:
-		if len(msg.String()) == 1 {
-			m.inputText += msg.String()
+		if len(msg.Runes) > 0 {
+			m.inputText += string(msg.Runes)
 		}
 	}
 	return m, nil
