@@ -2,6 +2,8 @@ package tui
 
 import (
 	"fmt"
+	"os"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -19,6 +21,7 @@ const (
 	ModeHome ShellMode = iota
 	ModeJoinInput
 	ModeNewRetro
+	ModeTeamSelect
 	ModeSession
 )
 
@@ -46,6 +49,11 @@ type ShellModel struct {
 	serverURL string
 	joinInput      string
 	joinErr        string
+	teamEntries    []domain.TeamEntry
+	teamCursor     int
+	teamInput      string
+	teamInputMode  bool
+	teamAction     string // "create", "rename"
 	templateCursor int
 	retroName      string
 	retroNameInput bool
@@ -66,6 +74,13 @@ func NewShellModel(registry *storage.JSONRegistryRepo, entry domain.TeamEntry, s
 	}
 }
 
+// StartInTeamSelect sets the initial mode to team selector (for first launch with no teams).
+func (m *ShellModel) StartInTeamSelect() {
+	entries, _ := m.registry.List()
+	m.teamEntries = entries
+	m.mode = ModeTeamSelect
+}
+
 func (m ShellModel) Init() tea.Cmd {
 	return m.home.Init()
 }
@@ -84,6 +99,8 @@ func (m ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateJoinInput(msg)
 	case ModeNewRetro:
 		return m.updateNewRetro(msg)
+	case ModeTeamSelect:
+		return m.updateTeamSelect(msg)
 	case ModeSession:
 		return m.updateSession(msg)
 	}
@@ -106,6 +123,8 @@ func (m ShellModel) updateHome(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.retroName = ""
 				m.retroNameInput = false
 				return m, nil
+			case "t":
+				return m.openTeamSelect()
 			}
 		}
 	}
@@ -266,11 +285,198 @@ func (m *ShellModel) startLocalRetro(name string) {
 	m.mode = ModeSession
 }
 
+func (m ShellModel) openTeamSelect() (tea.Model, tea.Cmd) {
+	entries, _ := m.registry.List()
+	m.teamEntries = entries
+	m.teamCursor = 0
+	m.teamInputMode = false
+	m.teamInput = ""
+	m.teamAction = ""
+	// Position cursor on currently selected team
+	for i, e := range entries {
+		if e.ID == m.teamEntry.ID {
+			m.teamCursor = i
+			break
+		}
+	}
+	m.mode = ModeTeamSelect
+	return m, nil
+}
+
+func (m ShellModel) updateTeamSelect(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		if m.teamInputMode {
+			return m.handleTeamInput(msg)
+		}
+		switch msg.String() {
+		case "esc":
+			if m.teamEntry.ID == "" {
+				return m, tea.Quit // no team to go back to
+			}
+			m.mode = ModeHome
+		case "up", "k":
+			if m.teamCursor > 0 {
+				m.teamCursor--
+			}
+		case "down", "j":
+			if m.teamCursor < len(m.teamEntries)-1 {
+				m.teamCursor++
+			}
+		case "enter":
+			if m.teamCursor < len(m.teamEntries) {
+				return m.selectTeam(m.teamEntries[m.teamCursor])
+			}
+		case "c":
+			m.teamInputMode = true
+			m.teamAction = "create"
+			m.teamInput = ""
+		case "r":
+			if m.teamCursor < len(m.teamEntries) {
+				m.teamInputMode = true
+				m.teamAction = "rename"
+				m.teamInput = m.teamEntries[m.teamCursor].Name
+			}
+		case "d":
+			if m.teamCursor < len(m.teamEntries) {
+				entry := m.teamEntries[m.teamCursor]
+				m.teamEntries = domain.RemoveTeamEntry(m.teamEntries, entry.ID)
+				m.registry.Save(m.teamEntries)
+				// Remove data dir
+				os.RemoveAll(m.registry.TeamDir(entry.ID))
+				// Clear selection if deleted
+				if entry.ID == m.teamEntry.ID {
+					m.teamEntry = domain.TeamEntry{}
+					m.registry.SetSelectedTeamID("")
+				}
+				if m.teamCursor >= len(m.teamEntries) && m.teamCursor > 0 {
+					m.teamCursor--
+				}
+			}
+		case "q":
+			return m, tea.Quit
+		}
+	}
+	return m, nil
+}
+
+func (m ShellModel) handleTeamInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		name := strings.TrimSpace(m.teamInput)
+		if name != "" {
+			switch m.teamAction {
+			case "create":
+				id := fmt.Sprintf("t-%d", len(m.teamEntries)+1)
+				if entries, err := domain.AddTeamEntry(m.teamEntries, id, name, ""); err == nil {
+					m.teamEntries = entries
+					m.registry.Save(m.teamEntries)
+					m.teamCursor = len(m.teamEntries) - 1
+				}
+			case "rename":
+				if m.teamCursor < len(m.teamEntries) {
+					id := m.teamEntries[m.teamCursor].ID
+					if entries, err := domain.RenameTeamEntry(m.teamEntries, id, name); err == nil {
+						m.teamEntries = entries
+						m.registry.Save(m.teamEntries)
+						// Update current entry if renamed
+						if id == m.teamEntry.ID {
+							m.teamEntry.Name = name
+						}
+					}
+				}
+			}
+		}
+		m.teamInputMode = false
+		m.teamInput = ""
+		m.teamAction = ""
+	case "esc":
+		m.teamInputMode = false
+		m.teamInput = ""
+		m.teamAction = ""
+	case "backspace":
+		if len(m.teamInput) > 0 {
+			m.teamInput = m.teamInput[:len(m.teamInput)-1]
+		}
+	default:
+		if len(msg.Runes) > 0 {
+			m.teamInput += string(msg.Runes)
+		}
+	}
+	return m, nil
+}
+
+func (m ShellModel) selectTeam(entry domain.TeamEntry) (tea.Model, tea.Cmd) {
+	m.teamEntry = entry
+	m.registry.SetSelectedTeamID(entry.ID)
+	m.home = NewHomeModel(m.registry, entry)
+	m.mode = ModeHome
+	return m, nil
+}
+
+func (m ShellModel) viewTeamSelect() string {
+	accent := lipgloss.NewStyle().Foreground(styles.Accent).Bold(true)
+	muted := lipgloss.NewStyle().Foreground(styles.Muted)
+
+	var s string
+	s += accent.Render("Teams") + "\n"
+	s += muted.Render(strings.Repeat("─", 40)) + "\n\n"
+
+	if len(m.teamEntries) == 0 {
+		s += muted.Render("  No teams yet. Press [c] to create one.") + "\n"
+	}
+	for i, entry := range m.teamEntries {
+		cursor := "  "
+		if i == m.teamCursor {
+			cursor = "> "
+		}
+		marker := ""
+		if entry.ID == m.teamEntry.ID {
+			marker = "  " + accent.Render("*")
+		}
+		line := fmt.Sprintf("%s%s%s", cursor, entry.Name, marker)
+		if i == m.teamCursor {
+			s += styles.Selected.Render(line) + "\n"
+		} else {
+			s += line + "\n"
+		}
+	}
+
+	s += "\n"
+	if m.teamInputMode {
+		label := m.teamAction
+		s += fmt.Sprintf("  %s: %s▌\n", label, m.teamInput)
+		s += muted.Render("  [Enter] save  [Esc] cancel") + "\n"
+	} else {
+		s += muted.Render("[↑↓] navigate  [Enter] select  [c] create  [d] delete  [r] rename  [Esc] back") + "\n"
+	}
+
+	return s
+}
+
 func (m *ShellModel) saveSessionToHistory() {
 	state := m.session.state
 	if state == nil {
 		return
 	}
+
+	// Capture participants into team members
+	if m.teamEntry.ID != "" {
+		teamDir := m.registry.TeamDir(m.teamEntry.ID)
+		repo := storage.NewJSONTeamRepo(teamDir)
+		team, _ := repo.LoadTeam()
+		changed := false
+		for _, p := range state.Participants {
+			if _, err := domain.AddMember(team, p.ID, p.Name); err == nil {
+				team, _ = domain.AddMember(team, p.ID, p.Name)
+				changed = true
+			}
+		}
+		if changed {
+			repo.SaveTeam(team)
+		}
+	}
+
 	// Only save if there are action items
 	var actionItems []domain.FlatActionItem
 	for _, n := range state.DiscussNotes {
@@ -345,6 +551,8 @@ func (m ShellModel) View() string {
 		return m.viewJoinInput()
 	case ModeNewRetro:
 		return m.viewNewRetro()
+	case ModeTeamSelect:
+		return m.viewTeamSelect()
 	case ModeSession:
 		return m.session.View()
 	default:

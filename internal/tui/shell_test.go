@@ -408,3 +408,222 @@ func TestShell_ViewNewRetro_NameInput(t *testing.T) {
 		t.Error("expected name input")
 	}
 }
+
+// --- Team selector ---
+
+func TestShell_TKeyOpensTeamSelect(t *testing.T) {
+	m := testShellModel(t)
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("t")})
+	shell := result.(ShellModel)
+	if shell.mode != ModeTeamSelect {
+		t.Errorf("expected ModeTeamSelect, got %d", shell.mode)
+	}
+}
+
+func TestShell_TeamSelect_ShowsTeams(t *testing.T) {
+	m := testShellModel(t)
+	// Add a team to registry first
+	entries, _ := m.registry.List()
+	entries, _ = domain.AddTeamEntry(entries, "t1", "Test Squad", "2025-01-01")
+	entries, _ = domain.AddTeamEntry(entries, "t2", "Other Team", "2025-01-02")
+	m.registry.Save(entries)
+
+	m.mode = ModeTeamSelect
+	m.teamEntries = entries
+	view := m.View()
+
+	if !strings.Contains(view, "Test Squad") {
+		t.Error("expected team name")
+	}
+	if !strings.Contains(view, "Other Team") {
+		t.Error("expected second team")
+	}
+}
+
+func TestShell_TeamSelect_Navigate(t *testing.T) {
+	m := testShellModel(t)
+	m.mode = ModeTeamSelect
+	m.teamEntries = []domain.TeamEntry{{ID: "t1", Name: "A"}, {ID: "t2", Name: "B"}}
+
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+	shell := result.(ShellModel)
+	if shell.teamCursor != 1 {
+		t.Errorf("expected 1, got %d", shell.teamCursor)
+	}
+
+	result, _ = shell.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("k")})
+	shell = result.(ShellModel)
+	if shell.teamCursor != 0 {
+		t.Errorf("expected 0, got %d", shell.teamCursor)
+	}
+}
+
+func TestShell_TeamSelect_SelectTeam(t *testing.T) {
+	m := testShellModel(t)
+	m.mode = ModeTeamSelect
+	m.teamEntries = []domain.TeamEntry{{ID: "t1", Name: "A"}, {ID: "t2", Name: "B"}}
+	m.teamCursor = 1
+
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	shell := result.(ShellModel)
+	if shell.mode != ModeHome {
+		t.Errorf("expected ModeHome, got %d", shell.mode)
+	}
+	if shell.teamEntry.ID != "t2" {
+		t.Errorf("expected t2, got %q", shell.teamEntry.ID)
+	}
+}
+
+func TestShell_TeamSelect_Create(t *testing.T) {
+	m := testShellModel(t)
+	m.mode = ModeTeamSelect
+	m.teamEntries = []domain.TeamEntry{}
+
+	// Press c
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("c")})
+	shell := result.(ShellModel)
+	if !shell.teamInputMode || shell.teamAction != "create" {
+		t.Error("expected create input mode")
+	}
+
+	// Type name
+	for _, ch := range "New Team" {
+		result, _ = shell.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{ch}})
+		shell = result.(ShellModel)
+	}
+
+	// Enter
+	result, _ = shell.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	shell = result.(ShellModel)
+	if len(shell.teamEntries) != 1 {
+		t.Fatalf("expected 1 team, got %d", len(shell.teamEntries))
+	}
+	if shell.teamEntries[0].Name != "New Team" {
+		t.Errorf("got %q", shell.teamEntries[0].Name)
+	}
+}
+
+func TestShell_TeamSelect_Delete(t *testing.T) {
+	m := testShellModel(t)
+	m.mode = ModeTeamSelect
+	m.teamEntries = []domain.TeamEntry{{ID: "t1", Name: "A"}, {ID: "t2", Name: "B"}}
+	m.teamCursor = 0
+
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("d")})
+	shell := result.(ShellModel)
+	if len(shell.teamEntries) != 1 {
+		t.Fatalf("expected 1 team, got %d", len(shell.teamEntries))
+	}
+	if shell.teamEntries[0].ID != "t2" {
+		t.Errorf("expected t2 remaining")
+	}
+}
+
+func TestShell_TeamSelect_Rename(t *testing.T) {
+	m := testShellModel(t)
+	m.mode = ModeTeamSelect
+	m.teamEntries = []domain.TeamEntry{{ID: "t1", Name: "Old Name"}}
+	m.teamCursor = 0
+
+	// Press r
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("r")})
+	shell := result.(ShellModel)
+	if !shell.teamInputMode || shell.teamAction != "rename" {
+		t.Error("expected rename input mode")
+	}
+	if shell.teamInput != "Old Name" {
+		t.Errorf("expected prefilled, got %q", shell.teamInput)
+	}
+}
+
+func TestShell_TeamSelect_EscReturnsHome(t *testing.T) {
+	m := testShellModel(t)
+	m.mode = ModeTeamSelect
+
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	shell := result.(ShellModel)
+	if shell.mode != ModeHome {
+		t.Errorf("expected ModeHome, got %d", shell.mode)
+	}
+}
+
+func TestShell_TeamSelect_InputEsc(t *testing.T) {
+	m := testShellModel(t)
+	m.mode = ModeTeamSelect
+	m.teamInputMode = true
+
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	shell := result.(ShellModel)
+	if shell.teamInputMode {
+		t.Error("should exit input")
+	}
+}
+
+func TestShell_TeamSelect_InputBackspace(t *testing.T) {
+	m := testShellModel(t)
+	m.mode = ModeTeamSelect
+	m.teamInputMode = true
+	m.teamInput = "abc"
+
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	shell := result.(ShellModel)
+	if shell.teamInput != "ab" {
+		t.Errorf("got %q", shell.teamInput)
+	}
+}
+
+func TestShell_StartInTeamSelect(t *testing.T) {
+	dir := t.TempDir()
+	reg := storage.NewJSONRegistryRepo(dir)
+	entry := domain.TeamEntry{} // no team
+	m := NewShellModel(reg, entry, "http://localhost:5173")
+	m.StartInTeamSelect()
+
+	if m.mode != ModeTeamSelect {
+		t.Errorf("expected ModeTeamSelect, got %d", m.mode)
+	}
+}
+
+// --- Capture participants ---
+
+func TestShell_SaveSessionCaptures_Participants(t *testing.T) {
+	m := testShellModel(t)
+	m.session.state = &protocol.RetroState{
+		Stage: "close",
+		Meta:  protocol.RetroMeta{Name: "Sprint 1"},
+		Participants: []protocol.Participant{
+			{ID: "p1", Name: "Alice"}, // already in team
+			{ID: "p2", Name: "NewPerson"},
+		},
+		DiscussNotes: []protocol.DiscussNote{
+			{ID: "n1", ParentCardID: "c1", Lane: "actions", Text: "Do stuff"},
+		},
+	}
+
+	m.saveSessionToHistory()
+
+	// Check team members were updated
+	repo := storage.NewJSONTeamRepo(m.registry.TeamDir("t1"))
+	team, _ := repo.LoadTeam()
+
+	found := false
+	for _, member := range team.Members {
+		if member.Name == "NewPerson" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected NewPerson to be added to team members")
+	}
+}
+
+func TestShell_TeamSelect_EmptyView(t *testing.T) {
+	m := testShellModel(t)
+	m.mode = ModeTeamSelect
+	m.teamEntries = []domain.TeamEntry{}
+	view := m.View()
+
+	if !strings.Contains(view, "No teams") {
+		t.Error("expected empty state message")
+	}
+}

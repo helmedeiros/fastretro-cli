@@ -313,7 +313,7 @@ func (m HomeModel) View() string {
 		b.WriteString("\n")
 		b.WriteString(muted.Render("[Tab] section  [a] add  [d] delete  [e] edit  [Enter] toggle done"))
 		b.WriteString("\n")
-		b.WriteString(muted.Render("[j] join retro  [n] new retro  [q] quit"))
+		b.WriteString(muted.Render("[j] join retro  [n] new retro  [t] teams  [q] quit"))
 	}
 
 	return b.String()

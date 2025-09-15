@@ -31,7 +31,7 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		// Get or create selected team
+		// Resolve selected team
 		selectedID, _ := reg.SelectedTeamID()
 		var entry domain.TeamEntry
 
@@ -44,22 +44,19 @@ var rootCmd = &cobra.Command{
 			}
 		}
 
-		// If no team selected, prompt to create
-		if entry.ID == "" {
-			if len(entries) > 0 {
-				entry = entries[0]
-				reg.SetSelectedTeamID(entry.ID)
-			} else {
-				id := fmt.Sprintf("t-%d", time.Now().UnixMilli())
-				name := "My Team"
-				entries, _ = domain.AddTeamEntry(entries, id, name, time.Now().Format(time.RFC3339))
-				reg.Save(entries)
-				reg.SetSelectedTeamID(id)
-				entry = entries[0]
-			}
+		// If no team selected but teams exist, pick first
+		if entry.ID == "" && len(entries) > 0 {
+			entry = entries[0]
+			reg.SetSelectedTeamID(entry.ID)
 		}
 
-		p := tea.NewProgram(tui.NewShellModel(reg, entry, serverURL), tea.WithAltScreen())
+		// Create shell — if no team, it starts in team selector mode
+		shell := tui.NewShellModel(reg, entry, serverURL)
+		if entry.ID == "" {
+			shell.StartInTeamSelect()
+		}
+
+		p := tea.NewProgram(shell, tea.WithAltScreen())
 		_, err = p.Run()
 		return err
 	},
