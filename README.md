@@ -1,6 +1,6 @@
 # fastretro-cli
 
-A terminal client for [fastRetro](https://github.com/helmedeiros/fastRetro) sprint retrospectives. Join a session from the command line, participate in every stage, and stay in sync with the web app — all without leaving your terminal.
+A standalone terminal tool for sprint retrospectives. Manage teams, track action items, run retros locally, or join remote [fastRetro](https://github.com/helmedeiros/fastRetro) sessions — all without leaving your terminal.
 
 Built with [Bubble Tea](https://github.com/charmbracelet/bubbletea) and [Lip Gloss](https://github.com/charmbracelet/lipgloss).
 
@@ -9,6 +9,10 @@ Built with [Bubble Tea](https://github.com/charmbracelet/bubbletea) and [Lip Glo
 ```bash
 go install github.com/helmedeiros/fastretro-cli/cmd/fastretro@latest
 
+# Launch the dashboard
+fastretro
+
+# Or join a remote session directly
 fastretro join "http://localhost:5173/#room=ABC-123-DEF"
 ```
 
@@ -18,10 +22,70 @@ Or build from source:
 git clone https://github.com/helmedeiros/fastretro-cli.git
 cd fastretro-cli
 make build
-./bin/fastretro join ABC-123-DEF
+./bin/fastretro
 ```
 
-## Stages
+## Home Screen
+
+Running `fastretro` with no arguments launches the team dashboard:
+
+```
+fastRetro CLI  team: Acme Squad
+────────────────────────────────────────────────────────
+
+╭─ MEMBERS (3) ─────╮╭─ AGREEMENTS (2) ──╮╭─ ACTION ITEMS (2) ────────╮
+│ > Alice            ││ Demo every Friday ││ [ ] Fix login bug → Bob   │
+│   Bob              ││ PRs need 2 reviews││ [x] Update CI → Alice     │
+│   Carol            ││                   ││                           │
+╰────────────────────╯╰───────────────────╯╰───────────────────────────╯
+
+RETRO HISTORY (1)
+────────────────────
+  Sprint 42 — 2025-09-07 — 2 action items
+
+[Tab] section  [a] add  [d] delete  [e] edit  [Enter] toggle done
+[j] join retro  [n] new retro  [t] teams  [q] quit
+```
+
+| Key       | Action                        |
+|-----------|-------------------------------|
+| `Tab`     | Cycle between panels          |
+| `j` / `k` | Navigate within panel         |
+| `a`       | Add item (member/agreement/action) |
+| `d`       | Delete selected item          |
+| `e`       | Edit selected item            |
+| `Enter`   | Toggle action item done       |
+| `j`       | Join a remote retro session   |
+| `n`       | Start a new local retro       |
+| `t`       | Open team selector            |
+| `q`       | Quit                          |
+
+## Team Management
+
+Press `t` from the home screen to manage teams:
+
+```
+Teams
+────────────────────────────────────────
+> Acme Squad        *
+  Backend Crew
+  Platform Team
+
+[↑↓] navigate  [Enter] select  [c] create  [d] delete  [r] rename  [Esc] back
+```
+
+Or use CLI commands:
+
+```bash
+fastretro team list
+fastretro team create "Backend Crew"
+fastretro team select "Backend Crew"
+fastretro team delete "Old Team"
+```
+
+Each team has its own members, agreements, action items, and retro history stored locally in `~/.fastretro/`.
+
+## Retro Stages
 
 Every retro follows the same flow. The stage bar at the top always shows where you are:
 
@@ -152,27 +216,39 @@ The CLI supports all 6 facilitation templates, each with proper column titles an
 
 ## How it works
 
-The CLI connects to the same WebSocket server as the web app. Any change made in the CLI appears in the browser and vice versa.
+### Standalone mode
+
+Press `n` from the home screen to start a retro locally. Pick a template, name your retro, and go. Team members are pre-loaded as participants. When the retro ends, action items are saved to the team's history.
+
+### Remote mode
+
+Press `j` to join a remote session hosted by the [fastRetro web app](https://github.com/helmedeiros/fastRetro). The CLI connects via WebSocket — changes sync in real time.
 
 ```
 Browser (host)  <--- WebSocket --->  Vite dev server  <--- WebSocket --->  CLI (participant)
 ```
 
-1. Host creates a retro and starts a sync session in the web app
-2. CLI joins with `fastretro join <room-code-or-url>`
-3. State syncs in real time — cards, votes, notes, stage navigation
+When you leave a remote session, participants are automatically added to your team and action items are saved to history.
 
 ## Usage
 
 ```bash
-# Join by room code
+# Launch dashboard (manage teams, start retros)
+fastretro
+
+# Join a remote session by room code
 fastretro join ABC-123-DEF
 
-# Join by URL (copies directly from browser)
+# Join by URL (paste from browser)
 fastretro join "http://localhost:5173/#room=ABC-123-DEF"
 
 # Custom server
 fastretro join ABC-123-DEF --server https://retro.example.com
+
+# Team management
+fastretro team list
+fastretro team create "My Team"
+fastretro team select "My Team"
 ```
 
 ## Development
@@ -188,22 +264,38 @@ make cover-html # Open coverage in browser
 ### Project structure
 
 ```
-cmd/fastretro/        CLI entry point (cobra)
+cmd/fastretro/        CLI entry point (cobra commands)
 internal/
+  domain/             Team, history, registry (pure functions, no I/O)
+  storage/            JSON file persistence (~/.fastretro/)
   protocol/           WebSocket message types + facilitation templates
   client/             WebSocket connection manager
-  tui/                Bubble Tea views per stage
+  tui/                Bubble Tea views (home, shell, retro stages)
   styles/             Lip Gloss dark theme
+```
+
+### Data storage
+
+```
+~/.fastretro/
+  config.json                  Selected team ID
+  teams/
+    registry.json              Team list [{id, name, createdAt}]
+    <team-id>/
+      team.json                Members + agreements
+      history.json             Completed retros + action items
 ```
 
 ### Test pyramid
 
-| Layer      | Focus                                  | Coverage |
-|------------|----------------------------------------|----------|
-| Protocol   | JSON serialization, templates          | 100%     |
-| Client     | Room codes, WebSocket integration      | 88%      |
-| TUI        | Views, key handlers, state mutations   | 94%      |
-| **Total**  |                                        | **93%**  |
+| Layer      | Focus                                      | Coverage |
+|------------|--------------------------------------------|----------|
+| Protocol   | JSON serialization, templates              | 100%     |
+| Domain     | Team, history, registry pure functions     | 99%      |
+| Client     | Room codes, WebSocket integration          | 88%      |
+| Storage    | JSON file persistence                      | 86%      |
+| TUI        | Views, key handlers, state mutations       | 91%      |
+| **Total**  |                                            | **91%**  |
 
 ## Requirements
 
