@@ -27,25 +27,9 @@ make build
 
 ## Home Screen
 
-Running `fastretro` with no arguments launches the team dashboard:
+Running `fastretro` with no arguments launches the team dashboard.
 
-```
-fastRetro CLI  team: Acme Squad
-────────────────────────────────────────────────────────
-
-╭─ MEMBERS (3) ─────╮╭─ AGREEMENTS (2) ──╮╭─ ACTION ITEMS (2) ────────╮
-│ > Alice            ││ Demo every Friday ││ [ ] Fix login bug → Bob   │
-│   Bob              ││ PRs need 2 reviews││ [x] Update CI → Alice     │
-│   Carol            ││                   ││                           │
-╰────────────────────╯╰───────────────────╯╰───────────────────────────╯
-
-RETRO HISTORY (1)
-────────────────────
-  Sprint 42 — 2025-09-07 — 2 action items
-
-[Tab] section  [a] add  [d] delete  [e] edit  [Enter] toggle done
-[j] join retro  [n] new retro  [t] teams  [q] quit
-```
+![Home screen](docs/screenshots/07-home.png)
 
 | Key       | Action                        |
 |-----------|-------------------------------|
@@ -62,17 +46,20 @@ RETRO HISTORY (1)
 
 ## Team Management
 
-Press `t` from the home screen to manage teams:
+Press `t` from the home screen to manage teams. Create new teams, switch between them, rename, or delete.
 
-```
-Teams
-────────────────────────────────────────
-> Acme Squad        *
-  Backend Crew
-  Platform Team
+![Team selector](docs/screenshots/08-teams.png)
 
-[↑↓] navigate  [Enter] select  [c] create  [d] delete  [r] rename  [Esc] back
-```
+![Create team](docs/screenshots/09-team-create.png)
+
+| Key       | Action          |
+|-----------|-----------------|
+| `j` / `k` | Navigate teams  |
+| `Enter`   | Select team     |
+| `c`       | Create new team |
+| `r`       | Rename team     |
+| `d`       | Delete team     |
+| `Esc`     | Back to home    |
 
 Or use CLI commands:
 
@@ -220,9 +207,13 @@ The CLI supports all 6 facilitation templates, each with proper column titles an
 
 Press `n` from the home screen to start a retro locally. Pick a template, name your retro, and go. Team members are pre-loaded as participants. When the retro ends, action items are saved to the team's history.
 
+![New retro template picker](docs/screenshots/11-new-retro.png)
+
 ### Remote mode
 
-Press `j` to join a remote session hosted by the [fastRetro web app](https://github.com/helmedeiros/fastRetro). The CLI connects via WebSocket — changes sync in real time.
+Press `j` to join a remote session hosted by the [fastRetro web app](https://github.com/helmedeiros/fastRetro). Paste the room code or URL and connect. Changes sync in real time. When you leave, participants are automatically added to your team and action items are saved.
+
+![Join retro](docs/screenshots/10-join.png)
 
 ```
 Browser (host)  <--- WebSocket --->  Vite dev server  <--- WebSocket --->  CLI (participant)
