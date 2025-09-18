@@ -205,3 +205,26 @@ func TestRequestStateMessage(t *testing.T) {
 		t.Errorf("expected type 'request-state', got %v", result["type"])
 	}
 }
+
+func TestParseMessage_TeamInfo(t *testing.T) {
+	data := `{"type":"team-info","teamInfo":{"teamName":"Acme","members":[{"id":"m1","name":"Alice"}],"agreements":[{"id":"a1","text":"Ship daily"}]}}`
+	msg, err := ParseMessage([]byte(data))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if msg.Type != "team-info" {
+		t.Errorf("expected team-info, got %q", msg.Type)
+	}
+	if msg.TeamInfo == nil {
+		t.Fatal("expected teamInfo")
+	}
+	if msg.TeamInfo.TeamName != "Acme" {
+		t.Errorf("got %q", msg.TeamInfo.TeamName)
+	}
+	if len(msg.TeamInfo.Members) != 1 || msg.TeamInfo.Members[0].Name != "Alice" {
+		t.Errorf("unexpected members: %v", msg.TeamInfo.Members)
+	}
+	if len(msg.TeamInfo.Agreements) != 1 || msg.TeamInfo.Agreements[0].Text != "Ship daily" {
+		t.Errorf("unexpected agreements: %v", msg.TeamInfo.Agreements)
+	}
+}

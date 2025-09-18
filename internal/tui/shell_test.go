@@ -627,3 +627,172 @@ func TestShell_TeamSelect_EmptyView(t *testing.T) {
 		t.Error("expected empty state message")
 	}
 }
+
+// --- Team-info from remote ---
+
+func TestShell_SaveSession_WithTeamInfo_CreatesTeam(t *testing.T) {
+	m := testShellModel(t)
+	m.session.state = &protocol.RetroState{
+		Stage: "close",
+		Meta:  protocol.RetroMeta{Name: "Remote Sprint"},
+		Participants: []protocol.Participant{
+			{ID: "p1", Name: "Alice"},
+			{ID: "p2", Name: "RemotePerson"},
+		},
+		DiscussNotes: []protocol.DiscussNote{
+			{ID: "n1", ParentCardID: "c1", Lane: "actions", Text: "Remote action"},
+		},
+	}
+	m.session.teamInfo = &protocol.SyncTeamInfo{
+		TeamName: "Remote Squad",
+		Members:  []protocol.TeamInfoMember{{ID: "m1", Name: "Alice"}, {ID: "m2", Name: "Dave"}},
+		Agreements: []protocol.TeamInfoAgreement{{ID: "a1", Text: "Ship daily"}},
+	}
+
+	m.saveSessionToHistory()
+
+	// Verify team was created
+	entries, _ := m.registry.List()
+	found := false
+	var teamID string
+	for _, e := range entries {
+		if e.Name == "Remote Squad" {
+			found = true
+			teamID = e.ID
+		}
+	}
+	if !found {
+		t.Fatal("expected 'Remote Squad' team to be created")
+	}
+
+	// Verify members merged
+	repo := storage.NewJSONTeamRepo(m.registry.TeamDir(teamID))
+	team, _ := repo.LoadTeam()
+	names := make(map[string]bool)
+	for _, m := range team.Members {
+		names[m.Name] = true
+	}
+	if !names["Alice"] || !names["Dave"] || !names["RemotePerson"] {
+		t.Errorf("expected Alice, Dave, RemotePerson in members, got %v", names)
+	}
+
+	// Verify agreements merged
+	if len(team.Agreements) != 1 || team.Agreements[0].Text != "Ship daily" {
+		t.Errorf("expected agreement 'Ship daily', got %v", team.Agreements)
+	}
+
+	// Verify history saved
+	history, _ := repo.LoadHistory()
+	if len(history.Completed) != 1 {
+		t.Fatalf("expected 1 completed retro, got %d", len(history.Completed))
+	}
+	if history.Completed[0].ID != "Remote Sprint" {
+		t.Errorf("expected 'Remote Sprint', got %q", history.Completed[0].ID)
+	}
+}
+
+func TestShell_SaveSession_WithTeamInfo_ExistingTeam(t *testing.T) {
+	m := testShellModel(t)
+
+	// Pre-create the team
+	entries, _ := m.registry.List()
+	entries, _ = domain.AddTeamEntry(entries, "existing-id", "Existing Squad", "")
+	m.registry.Save(entries)
+
+	m.session.state = &protocol.RetroState{
+		Stage: "close",
+		Meta:  protocol.RetroMeta{Name: "Sprint"},
+		DiscussNotes: []protocol.DiscussNote{
+			{ID: "n1", Lane: "actions", Text: "Do stuff"},
+		},
+	}
+	m.session.teamInfo = &protocol.SyncTeamInfo{
+		TeamName: "Existing Squad",
+		Members:  []protocol.TeamInfoMember{{ID: "m1", Name: "NewPerson"}},
+	}
+
+	m.saveSessionToHistory()
+
+	// Should use existing team, not create new
+	entries, _ = m.registry.List()
+	count := 0
+	for _, e := range entries {
+		if e.Name == "Existing Squad" {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Errorf("expected 1 Existing Squad, got %d", count)
+	}
+
+	// Verify member added
+	repo := storage.NewJSONTeamRepo(m.registry.TeamDir("existing-id"))
+	team, _ := repo.LoadTeam()
+	found := false
+	for _, member := range team.Members {
+		if member.Name == "NewPerson" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected NewPerson in existing team")
+	}
+}
+
+func TestShell_HandleWS_TeamInfo(t *testing.T) {
+	m := testModel()
+	m.state = &protocol.RetroState{Stage: "brainstorm"}
+
+	msg := protocol.IncomingMessage{
+		Type: "team-info",
+		TeamInfo: &protocol.SyncTeamInfo{
+			TeamName: "Test Squad",
+			Members:  []protocol.TeamInfoMember{{ID: "m1", Name: "Alice"}},
+		},
+	}
+
+	result, _ := m.handleWS(msg)
+	model := result.(Model)
+
+	if model.teamInfo == nil {
+		t.Fatal("expected teamInfo to be set")
+	}
+	if model.teamInfo.TeamName != "Test Squad" {
+		t.Errorf("got %q", model.teamInfo.TeamName)
+	}
+}
+
+func TestResolveOrCreateTeam_FindsExisting(t *testing.T) {
+	m := testShellModel(t)
+	entries, _ := m.registry.List()
+	entries, _ = domain.AddTeamEntry(entries, "t99", "Alpha", "")
+	m.registry.Save(entries)
+
+	info := &protocol.SyncTeamInfo{TeamName: "Alpha"}
+	entry := m.resolveOrCreateTeam(info)
+
+	if entry.ID != "t99" {
+		t.Errorf("expected t99, got %q", entry.ID)
+	}
+}
+
+func TestResolveOrCreateTeam_CreatesNew(t *testing.T) {
+	m := testShellModel(t)
+	info := &protocol.SyncTeamInfo{TeamName: "Brand New"}
+	entry := m.resolveOrCreateTeam(info)
+
+	if entry.Name != "Brand New" {
+		t.Errorf("expected 'Brand New', got %q", entry.Name)
+	}
+	// Verify persisted
+	entries, _ := m.registry.List()
+	found := false
+	for _, e := range entries {
+		if e.Name == "Brand New" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected team to be persisted")
+	}
+}

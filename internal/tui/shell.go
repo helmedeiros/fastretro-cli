@@ -454,27 +454,73 @@ func (m ShellModel) viewTeamSelect() string {
 	return s
 }
 
+func (m *ShellModel) resolveOrCreateTeam(info *protocol.SyncTeamInfo) domain.TeamEntry {
+	entries, _ := m.registry.List()
+
+	// Find existing team by name
+	if entry, ok := domain.FindTeamEntryByName(entries, info.TeamName); ok {
+		return entry
+	}
+
+	// Create new team
+	id := fmt.Sprintf("t-remote-%d", len(entries)+1)
+	entries, err := domain.AddTeamEntry(entries, id, info.TeamName, "")
+	if err != nil {
+		return m.teamEntry // fallback to current
+	}
+	m.registry.Save(entries)
+	return entries[len(entries)-1]
+}
+
 func (m *ShellModel) saveSessionToHistory() {
 	state := m.session.state
 	if state == nil {
 		return
 	}
 
-	// Capture participants into team members
-	if m.teamEntry.ID != "" {
-		teamDir := m.registry.TeamDir(m.teamEntry.ID)
-		repo := storage.NewJSONTeamRepo(teamDir)
-		team, _ := repo.LoadTeam()
-		changed := false
-		for _, p := range state.Participants {
-			if _, err := domain.AddMember(team, p.ID, p.Name); err == nil {
-				team, _ = domain.AddMember(team, p.ID, p.Name)
+	// Resolve target team: use team-info from remote if available
+	targetEntry := m.teamEntry
+	if m.session.teamInfo != nil && m.session.teamInfo.TeamName != "" {
+		targetEntry = m.resolveOrCreateTeam(m.session.teamInfo)
+	}
+
+	if targetEntry.ID == "" {
+		return
+	}
+
+	// Merge participants, members, and agreements into the target team
+	teamDir := m.registry.TeamDir(targetEntry.ID)
+	repo := storage.NewJSONTeamRepo(teamDir)
+	team, _ := repo.LoadTeam()
+	changed := false
+
+	// Merge participants from retro session
+	for _, p := range state.Participants {
+		if updated, err := domain.AddMember(team, p.ID, p.Name); err == nil {
+			team = updated
+			changed = true
+		}
+	}
+
+	// Merge members from team-info
+	if m.session.teamInfo != nil {
+		for _, member := range m.session.teamInfo.Members {
+			if updated, err := domain.AddMember(team, member.ID, member.Name); err == nil {
+				team = updated
 				changed = true
 			}
 		}
-		if changed {
-			repo.SaveTeam(team)
+		// Merge agreements from team-info
+		for _, ag := range m.session.teamInfo.Agreements {
+			if updated, err := domain.AddAgreement(team, ag.ID, ag.Text, ""); err == nil {
+				team = updated
+				changed = true
+			}
 		}
+	}
+
+	if changed {
+		repo.SaveTeam(team)
 	}
 
 	// Only save if there are action items
@@ -526,9 +572,8 @@ func (m *ShellModel) saveSessionToHistory() {
 		return // nothing worth saving
 	}
 
-	teamDir := m.registry.TeamDir(m.teamEntry.ID)
-	repo := storage.NewJSONTeamRepo(teamDir)
-	history, _ := repo.LoadHistory()
+	historyRepo := storage.NewJSONTeamRepo(m.registry.TeamDir(targetEntry.ID))
+	history, _ := historyRepo.LoadHistory()
 
 	retroID := state.Meta.Name
 	if retroID == "" {
@@ -542,7 +587,7 @@ func (m *ShellModel) saveSessionToHistory() {
 		FullState:   *state,
 	}
 	history = domain.AddCompletedRetro(history, entry)
-	repo.SaveHistory(history)
+	historyRepo.SaveHistory(history)
 }
 
 func (m ShellModel) View() string {

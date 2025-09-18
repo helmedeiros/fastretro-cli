@@ -29,6 +29,7 @@ type Model struct {
 	inputMode     bool
 	activeCol     int
 	mergeSource   string // card ID selected as merge source
+	teamInfo      *protocol.SyncTeamInfo
 	err           error
 	width         int
 	height        int
@@ -106,6 +107,10 @@ func (m Model) handleWS(msg protocol.IncomingMessage) (tea.Model, tea.Cmd) {
 	case "navigate-stage":
 		if m.state != nil {
 			m.state.Stage = msg.Stage
+		}
+	case "team-info":
+		if msg.TeamInfo != nil {
+			m.teamInfo = msg.TeamInfo
 		}
 	}
 	return m, listenWS(m.client)
