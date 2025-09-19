@@ -69,6 +69,14 @@ func ClaimIdentityMessage(participantID string) ([]byte, error) {
 	})
 }
 
+// TeamInfoMessage sends team info to other clients.
+func TeamInfoMessage(info *SyncTeamInfo) ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"type":     "team-info",
+		"teamInfo": info,
+	})
+}
+
 // RequestStateMessage asks other clients to broadcast their state.
 func RequestStateMessage() ([]byte, error) {
 	return json.Marshal(map[string]string{

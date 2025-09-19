@@ -276,7 +276,35 @@ func (m *ShellModel) startLocalRetro(name string) {
 		DiscussNotes: []protocol.DiscussNote{},
 	}
 
+	// Try to create a room on the server for sharing
+	var c *client.Client
+	roomCode, err := client.CreateRoom(m.serverURL)
+	if err == nil {
+		c, err = client.Connect(roomCode, m.serverURL)
+		if err == nil {
+			// Broadcast initial state and team info
+			c.SendState(state)
+			teamInfo := protocol.SyncTeamInfo{
+				TeamName: m.teamEntry.Name,
+			}
+			for _, member := range m.home.team.Members {
+				teamInfo.Members = append(teamInfo.Members, protocol.TeamInfoMember{
+					ID: member.ID, Name: member.Name,
+				})
+			}
+			for _, ag := range m.home.team.Agreements {
+				teamInfo.Agreements = append(teamInfo.Agreements, protocol.TeamInfoAgreement{
+					ID: ag.ID, Text: ag.Text,
+				})
+			}
+			if msg, err := protocol.TeamInfoMessage(&teamInfo); err == nil {
+				c.Send(msg)
+			}
+		}
+	}
+
 	m.session = Model{
+		client:   c,
 		state:    state,
 		takenIDs: make(map[string]bool),
 		width:    m.width,

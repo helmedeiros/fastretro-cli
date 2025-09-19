@@ -1,7 +1,9 @@
 package client
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 
@@ -80,6 +82,28 @@ func (c *Client) RequestState() error {
 		return err
 	}
 	return c.Send(msg)
+}
+
+// ShareURL returns a shareable URL for the room.
+func (c *Client) ShareURL(serverURL string) string {
+	return fmt.Sprintf("%s/#room=%s", strings.TrimRight(serverURL, "/"), c.RoomCode)
+}
+
+// CreateRoom calls the server API to create a new room and returns the code.
+func CreateRoom(serverURL string) (string, error) {
+	url := fmt.Sprintf("%s/__api/rooms", strings.TrimRight(serverURL, "/"))
+	resp, err := http.Post(url, "application/json", nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create room: %w", err)
+	}
+	defer resp.Body.Close()
+	var result struct {
+		Code string `json:"code"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("failed to parse room response: %w", err)
+	}
+	return result.Code, nil
 }
 
 // Close closes the WebSocket connection.

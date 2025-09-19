@@ -185,7 +185,9 @@ func (m Model) View() string {
 	if m.state.Meta.Date != "" {
 		retroInfo += "  " + muted.Render(m.state.Meta.Date)
 	}
-	retroInfo += "  " + muted.Render(fmt.Sprintf("Room: %s | %d peers", roomCode, m.peerCount))
+	if roomCode != "" {
+		retroInfo += "  " + muted.Render(fmt.Sprintf("Room: %s | %d peers", roomCode, m.peerCount))
+	}
 
 	header := retroInfo + "\n" + m.renderStageBar()
 
