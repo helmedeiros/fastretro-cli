@@ -166,6 +166,7 @@ func (m ShellModel) connectToRoom() (tea.Model, tea.Cmd) {
 	}
 
 	m.session = NewModel(c)
+	m.session.serverURL = m.serverURL
 	m.session.width = m.width
 	m.session.height = m.height
 	m.mode = ModeSession
@@ -303,12 +304,27 @@ func (m *ShellModel) startLocalRetro(name string) {
 		}
 	}
 
+	// Build team info for responding to request-state from peers
+	sessionTeamInfo := &protocol.SyncTeamInfo{TeamName: m.teamEntry.Name}
+	for _, member := range m.home.team.Members {
+		sessionTeamInfo.Members = append(sessionTeamInfo.Members, protocol.TeamInfoMember{
+			ID: member.ID, Name: member.Name,
+		})
+	}
+	for _, ag := range m.home.team.Agreements {
+		sessionTeamInfo.Agreements = append(sessionTeamInfo.Agreements, protocol.TeamInfoAgreement{
+			ID: ag.ID, Text: ag.Text,
+		})
+	}
+
 	m.session = Model{
-		client:   c,
-		state:    state,
-		takenIDs: make(map[string]bool),
-		width:    m.width,
-		height:   m.height,
+		client:    c,
+		state:     state,
+		teamInfo:  sessionTeamInfo,
+		serverURL: m.serverURL,
+		takenIDs:  make(map[string]bool),
+		width:     m.width,
+		height:    m.height,
 	}
 	m.mode = ModeSession
 }

@@ -227,6 +227,18 @@ func TestHandleWS_NavigateStage_NoState(t *testing.T) {
 	}
 }
 
+func TestHandleWS_RequestState(t *testing.T) {
+	m := testBrainstormModel()
+	// No client, so request-state is a no-op (doesn't panic)
+	msg := protocol.IncomingMessage{Type: "request-state"}
+	result, _ := m.handleWS(msg)
+	model := result.(Model)
+	// State should be unchanged
+	if model.state.Stage != "brainstorm" {
+		t.Error("state should be unchanged")
+	}
+}
+
 func TestRenderStageBar(t *testing.T) {
 	m := testBrainstormModel()
 	bar := m.renderStageBar()

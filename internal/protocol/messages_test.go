@@ -228,3 +228,23 @@ func TestParseMessage_TeamInfo(t *testing.T) {
 		t.Errorf("unexpected agreements: %v", msg.TeamInfo.Agreements)
 	}
 }
+
+func TestTeamInfoMessage(t *testing.T) {
+	info := &SyncTeamInfo{
+		TeamName:   "Test",
+		Members:    []TeamInfoMember{{ID: "m1", Name: "Alice"}},
+		Agreements: []TeamInfoAgreement{{ID: "a1", Text: "Ship daily"}},
+	}
+	data, err := TeamInfoMessage(info)
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+	if result["type"] != "team-info" {
+		t.Errorf("expected team-info, got %v", result["type"])
+	}
+}

@@ -106,3 +106,21 @@ func TestToWSURL(t *testing.T) {
 		}
 	}
 }
+
+func TestShareURL(t *testing.T) {
+	c := &Client{RoomCode: "ABC-123-DEF"}
+	got := c.ShareURL("http://localhost:5173")
+	want := "http://localhost:5173/#room=ABC-123-DEF"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestShareURL_TrailingSlash(t *testing.T) {
+	c := &Client{RoomCode: "ABC-123"}
+	got := c.ShareURL("http://localhost:5173/")
+	want := "http://localhost:5173/#room=ABC-123"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}

@@ -30,6 +30,7 @@ type Model struct {
 	activeCol     int
 	mergeSource   string // card ID selected as merge source
 	teamInfo      *protocol.SyncTeamInfo
+	serverURL     string
 	err           error
 	width         int
 	height        int
@@ -112,6 +113,15 @@ func (m Model) handleWS(msg protocol.IncomingMessage) (tea.Model, tea.Cmd) {
 		if msg.TeamInfo != nil {
 			m.teamInfo = msg.TeamInfo
 		}
+	case "request-state":
+		if m.client != nil && m.state != nil {
+			m.client.SendState(m.state)
+			if m.teamInfo != nil {
+				if data, err := protocol.TeamInfoMessage(m.teamInfo); err == nil {
+					m.client.Send(data)
+				}
+			}
+		}
 	}
 	return m, listenWS(m.client)
 }
@@ -189,7 +199,17 @@ func (m Model) View() string {
 		retroInfo += "  " + muted.Render(fmt.Sprintf("Room: %s | %d peers", roomCode, m.peerCount))
 	}
 
-	header := retroInfo + "\n" + m.renderStageBar()
+	shareInfo := ""
+	if m.client != nil && roomCode != "" {
+		serverBase := m.serverURL
+		if serverBase == "" {
+			serverBase = "http://localhost:5173"
+		}
+		shareURL := m.client.ShareURL(serverBase)
+		shareInfo = "\n" + muted.Render(fmt.Sprintf("Share: %s  |  Code: %s", shareURL, roomCode))
+	}
+
+	header := retroInfo + "\n" + m.renderStageBar() + shareInfo
 
 	var body string
 	switch m.state.Stage {
