@@ -2,7 +2,10 @@ package tui
 
 import (
 	"fmt"
+	"os/exec"
+	"runtime"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -10,6 +13,29 @@ import (
 	"github.com/helmedeiros/fastretro-cli/internal/protocol"
 	"github.com/helmedeiros/fastretro-cli/internal/styles"
 )
+
+// clearCopyMsg clears the copy confirmation after a delay.
+type clearCopyMsg struct{}
+
+func clearCopyAfter() tea.Cmd {
+	return tea.Tick(2*time.Second, func(time.Time) tea.Msg {
+		return clearCopyMsg{}
+	})
+}
+
+func copyToClipboard(text string) error {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("pbcopy")
+	case "linux":
+		cmd = exec.Command("xclip", "-selection", "clipboard")
+	default:
+		cmd = exec.Command("clip")
+	}
+	cmd.Stdin = strings.NewReader(text)
+	return cmd.Run()
+}
 
 // WSMsg wraps an incoming WebSocket message for Bubble Tea.
 type WSMsg protocol.IncomingMessage
@@ -31,6 +57,7 @@ type Model struct {
 	mergeSource   string // card ID selected as merge source
 	teamInfo      *protocol.SyncTeamInfo
 	serverURL     string
+	copyMsg       string
 	err           error
 	width         int
 	height        int
@@ -74,6 +101,9 @@ func listenWS(c *client.Client) tea.Cmd {
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case clearCopyMsg:
+		m.copyMsg = ""
+		return m, nil
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -131,6 +161,26 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "ctrl+c", "q":
 		if !m.inputMode {
 			return m, tea.Quit
+		}
+	}
+
+	// Copy room code / share URL (available in all stages when not in input mode)
+	if !m.inputMode && m.client != nil {
+		switch msg.String() {
+		case "c":
+			if err := copyToClipboard(m.client.RoomCode); err == nil {
+				m.copyMsg = "Room code copied!"
+				return m, clearCopyAfter()
+			}
+		case "C":
+			serverBase := m.serverURL
+			if serverBase == "" {
+				serverBase = "http://localhost:5173"
+			}
+			if err := copyToClipboard(m.client.ShareURL(serverBase)); err == nil {
+				m.copyMsg = "Share URL copied!"
+				return m, clearCopyAfter()
+			}
 		}
 	}
 
@@ -199,17 +249,13 @@ func (m Model) View() string {
 		retroInfo += "  " + muted.Render(fmt.Sprintf("Room: %s | %d peers", roomCode, m.peerCount))
 	}
 
-	shareInfo := ""
-	if m.client != nil && roomCode != "" {
-		serverBase := m.serverURL
-		if serverBase == "" {
-			serverBase = "http://localhost:5173"
-		}
-		shareURL := m.client.ShareURL(serverBase)
-		shareInfo = "\n" + muted.Render(fmt.Sprintf("Share: %s  |  Code: %s", shareURL, roomCode))
+	// Show copy confirmation briefly
+	copyMsg := ""
+	if m.copyMsg != "" {
+		copyMsg = "  " + lipgloss.NewStyle().Foreground(styles.Success).Render(m.copyMsg)
 	}
 
-	header := retroInfo + "\n" + m.renderStageBar() + shareInfo
+	header := retroInfo + copyMsg + "\n" + m.renderStageBar()
 
 	var body string
 	switch m.state.Stage {
