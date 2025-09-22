@@ -246,7 +246,7 @@ func (m Model) View() string {
 		retroInfo += "  " + muted.Render(m.state.Meta.Date)
 	}
 	if roomCode != "" {
-		retroInfo += "  " + muted.Render(fmt.Sprintf("Room: %s | %d peers", roomCode, m.peerCount))
+		retroInfo += "  " + muted.Render(fmt.Sprintf("Room: %s | %d peers | [c] copy code  [C] copy URL", roomCode, m.peerCount))
 	}
 
 	// Show copy confirmation briefly
