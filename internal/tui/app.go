@@ -184,6 +184,26 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	// Stage navigation (available in all stages when not in input mode)
+	if !m.inputMode && m.state != nil {
+		switch msg.String() {
+		case "[":
+			if idx := stageIndex(m.state.Stage); idx > 0 {
+				m.state.Stage = allStages[idx-1]
+				m.cursor = 0
+				m.broadcastState()
+			}
+			return m, nil
+		case "]":
+			if idx := stageIndex(m.state.Stage); idx >= 0 && idx < len(allStages)-1 {
+				m.state.Stage = allStages[idx+1]
+				m.cursor = 0
+				m.broadcastState()
+			}
+			return m, nil
+		}
+	}
+
 	// Identity selection
 	if m.participantID == "" && m.state != nil {
 		return m.handleJoinKeys(msg)
@@ -305,6 +325,15 @@ func joinColumnsEqualHeight(contents []string, colStyles []lipgloss.Style) strin
 
 var allStages = []string{"icebreaker", "brainstorm", "group", "vote", "discuss", "review", "close"}
 
+func stageIndex(stage string) int {
+	for i, s := range allStages {
+		if s == stage {
+			return i
+		}
+	}
+	return -1
+}
+
 func (m Model) renderStageBar() string {
 	if m.state == nil {
 		return ""
@@ -322,5 +351,8 @@ func (m Model) renderStageBar() string {
 			parts = append(parts, inactive.Render(label))
 		}
 	}
-	return strings.Join(parts, "  ")
+	bar := strings.Join(parts, "  ")
+	muted := lipgloss.NewStyle().Foreground(styles.Muted)
+	bar += "  " + muted.Render("← [  ] →")
+	return bar
 }
