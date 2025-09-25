@@ -263,6 +263,12 @@ func (m *ShellModel) startLocalRetro(name string) {
 		})
 	}
 
+	// Build participant IDs for icebreaker order
+	var participantIDs []string
+	for _, p := range participants {
+		participantIDs = append(participantIDs, p.ID)
+	}
+
 	state := &protocol.RetroState{
 		Stage: "icebreaker",
 		Meta: protocol.RetroMeta{
@@ -270,6 +276,20 @@ func (m *ShellModel) startLocalRetro(name string) {
 			TemplateID: tmpl.ID,
 		},
 		Participants: participants,
+		Icebreaker: &protocol.Icebreaker{
+			Questions: []string{
+				"What is a book or show you would recommend right now?",
+				"If you could have any superpower for a day, what would it be?",
+				"What is something you learned recently that surprised you?",
+				"If you could travel anywhere tomorrow, where would you go?",
+				"What is your go-to comfort food?",
+				"What is the best advice you have ever received?",
+				"If you could master any skill instantly, what would it be?",
+				"What is a small thing that made you happy this week?",
+			},
+			ParticipantIDs: participantIDs,
+			CurrentIndex:   0,
+		},
 		Cards:        []protocol.Card{},
 		Groups:       []protocol.Group{},
 		Votes:        []protocol.Vote{},
