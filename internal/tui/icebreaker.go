@@ -2,8 +2,10 @@ package tui
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/helmedeiros/fastretro-cli/internal/styles"
 )
@@ -28,7 +30,7 @@ func (m Model) viewIcebreaker() string {
 	if question != "" {
 		b.WriteString(styles.ActiveCard.Render(fmt.Sprintf("  %s  ", question)))
 	} else {
-		b.WriteString(muted.Render("  Spin the wheel to get a question!"))
+		b.WriteString(muted.Render("  Press [s] to spin a question!"))
 	}
 	b.WriteString("\n\n")
 
@@ -58,9 +60,41 @@ func (m Model) viewIcebreaker() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(muted.Render("View only — use web app to spin and advance"))
+	b.WriteString(muted.Render("[s] spin question  [n] next person  [p] prev person"))
 
 	return b.String()
+}
+
+func (m Model) handleIcebreakerKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.state == nil || m.state.Icebreaker == nil {
+		return m, nil
+	}
+
+	ib := m.state.Icebreaker
+
+	switch msg.String() {
+	case "s":
+		// Spin: pick a random question
+		if len(ib.Questions) > 0 {
+			m.state.Icebreaker.Question = ib.Questions[rand.Intn(len(ib.Questions))]
+			m.broadcastState()
+		}
+	case "n":
+		// Next participant
+		if ib.CurrentIndex < len(ib.ParticipantIDs)-1 {
+			m.state.Icebreaker.CurrentIndex++
+			m.state.Icebreaker.Question = ""
+			m.broadcastState()
+		}
+	case "p":
+		// Previous participant
+		if ib.CurrentIndex > 0 {
+			m.state.Icebreaker.CurrentIndex--
+			m.state.Icebreaker.Question = ""
+			m.broadcastState()
+		}
+	}
+	return m, nil
 }
 
 func (m Model) participantName(id string) string {

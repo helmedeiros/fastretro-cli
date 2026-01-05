@@ -212,6 +212,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Stage-specific
 	if m.state != nil {
 		switch m.state.Stage {
+		case "icebreaker":
+			return m.handleIcebreakerKeys(msg)
 		case "brainstorm":
 			return m.handleBrainstormKeys(msg)
 		case "group":

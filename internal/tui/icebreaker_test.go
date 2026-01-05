@@ -105,7 +105,7 @@ func TestViewIcebreaker_NoQuestion(t *testing.T) {
 
 	view := m.viewIcebreaker()
 
-	if !strings.Contains(view, "Spin") {
+	if !strings.Contains(view, "spin") {
 		t.Error("expected spin prompt when no question")
 	}
 }
@@ -143,6 +143,123 @@ func TestParticipantName_NilState(t *testing.T) {
 
 	if name := m.participantName("p1"); name != "p1" {
 		t.Errorf("expected 'p1' as fallback, got %q", name)
+	}
+}
+
+func TestViewIcebreaker_ShowsHelpKeys(t *testing.T) {
+	m := testIcebreakerModel()
+	view := m.viewIcebreaker()
+
+	if !strings.Contains(view, "spin") {
+		t.Error("expected spin hint")
+	}
+	if !strings.Contains(view, "next") {
+		t.Error("expected next hint")
+	}
+}
+
+// --- handleIcebreakerKeys ---
+
+func TestHandleIcebreakerKeys_Spin(t *testing.T) {
+	m := testIcebreakerModel()
+	m.state.Icebreaker.Question = ""
+
+	result, _ := m.handleIcebreakerKeys(keyMsg("s"))
+	model := result.(Model)
+
+	if model.state.Icebreaker.Question == "" {
+		t.Error("expected question to be set after spin")
+	}
+}
+
+func TestHandleIcebreakerKeys_SpinPicksFromPool(t *testing.T) {
+	m := testIcebreakerModel()
+
+	result, _ := m.handleIcebreakerKeys(keyMsg("s"))
+	model := result.(Model)
+
+	q := model.state.Icebreaker.Question
+	found := false
+	for _, qq := range model.state.Icebreaker.Questions {
+		if q == qq {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("question %q not in pool", q)
+	}
+}
+
+func TestHandleIcebreakerKeys_Next(t *testing.T) {
+	m := testIcebreakerModel()
+	m.state.Icebreaker.CurrentIndex = 0
+
+	result, _ := m.handleIcebreakerKeys(keyMsg("n"))
+	model := result.(Model)
+
+	if model.state.Icebreaker.CurrentIndex != 1 {
+		t.Errorf("expected 1, got %d", model.state.Icebreaker.CurrentIndex)
+	}
+	if model.state.Icebreaker.Question != "" {
+		t.Error("question should be cleared on next")
+	}
+}
+
+func TestHandleIcebreakerKeys_NextAtEnd(t *testing.T) {
+	m := testIcebreakerModel()
+	m.state.Icebreaker.CurrentIndex = 2 // last participant
+
+	result, _ := m.handleIcebreakerKeys(keyMsg("n"))
+	model := result.(Model)
+
+	if model.state.Icebreaker.CurrentIndex != 2 {
+		t.Error("should stay at end")
+	}
+}
+
+func TestHandleIcebreakerKeys_Prev(t *testing.T) {
+	m := testIcebreakerModel()
+	m.state.Icebreaker.CurrentIndex = 1
+
+	result, _ := m.handleIcebreakerKeys(keyMsg("p"))
+	model := result.(Model)
+
+	if model.state.Icebreaker.CurrentIndex != 0 {
+		t.Errorf("expected 0, got %d", model.state.Icebreaker.CurrentIndex)
+	}
+}
+
+func TestHandleIcebreakerKeys_PrevAtStart(t *testing.T) {
+	m := testIcebreakerModel()
+	m.state.Icebreaker.CurrentIndex = 0
+
+	result, _ := m.handleIcebreakerKeys(keyMsg("p"))
+	model := result.(Model)
+
+	if model.state.Icebreaker.CurrentIndex != 0 {
+		t.Error("should stay at start")
+	}
+}
+
+func TestHandleIcebreakerKeys_NilState(t *testing.T) {
+	m := testModel()
+	result, _ := m.handleIcebreakerKeys(keyMsg("s"))
+	_ = result // should not panic
+}
+
+func TestHandleIcebreakerKeys_NilIcebreaker(t *testing.T) {
+	m := testModel()
+	m.state = &protocol.RetroState{Stage: "icebreaker"}
+	result, _ := m.handleIcebreakerKeys(keyMsg("s"))
+	_ = result // should not panic
+}
+
+func TestHandleKey_IcebreakerStage(t *testing.T) {
+	m := testIcebreakerModel()
+	result, _ := m.handleKey(keyMsg("s"))
+	model := result.(Model)
+	if model.state.Icebreaker.Question == "" {
+		t.Error("expected icebreaker handler to fire")
 	}
 }
 
