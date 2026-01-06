@@ -239,6 +239,93 @@ func TestHandleWS_RequestState(t *testing.T) {
 	}
 }
 
+func TestBuildDiscussState_SortsByVotes(t *testing.T) {
+	m := testModel()
+	m.state = &protocol.RetroState{
+		Cards: []protocol.Card{
+			{ID: "c1", ColumnID: "stop", Text: "low votes"},
+			{ID: "c2", ColumnID: "stop", Text: "high votes"},
+		},
+		Groups: []protocol.Group{},
+		Votes: []protocol.Vote{
+			{ParticipantID: "p1", CardID: "c2"},
+			{ParticipantID: "p2", CardID: "c2"},
+			{ParticipantID: "p1", CardID: "c1"},
+		},
+	}
+
+	ds := m.buildDiscussState()
+
+	if len(ds.Order) != 2 {
+		t.Fatalf("expected 2 items, got %d", len(ds.Order))
+	}
+	if ds.Order[0] != "c2" {
+		t.Errorf("expected c2 first (most votes), got %q", ds.Order[0])
+	}
+	if ds.Segment != "context" {
+		t.Errorf("expected context segment, got %q", ds.Segment)
+	}
+}
+
+func TestBuildDiscussState_GroupsAndCards(t *testing.T) {
+	m := testModel()
+	m.state = &protocol.RetroState{
+		Cards: []protocol.Card{
+			{ID: "c1", ColumnID: "stop", Text: "in group"},
+			{ID: "c2", ColumnID: "stop", Text: "ungrouped"},
+		},
+		Groups: []protocol.Group{
+			{ID: "g1", ColumnID: "stop", Name: "Group", CardIDs: []string{"c1"}},
+		},
+	}
+
+	ds := m.buildDiscussState()
+
+	if len(ds.Order) != 2 {
+		t.Fatalf("expected 2 (1 group + 1 card), got %d", len(ds.Order))
+	}
+	ids := make(map[string]bool)
+	for _, id := range ds.Order {
+		ids[id] = true
+	}
+	if !ids["g1"] || !ids["c2"] {
+		t.Errorf("expected g1 and c2, got %v", ds.Order)
+	}
+}
+
+func TestInitStage_Discuss(t *testing.T) {
+	m := testModel()
+	m.state = &protocol.RetroState{
+		Stage: "discuss",
+		Cards: []protocol.Card{{ID: "c1", ColumnID: "stop", Text: "item"}},
+	}
+
+	m.initStage()
+
+	if m.state.Discuss == nil {
+		t.Fatal("expected discuss state to be initialized")
+	}
+	if len(m.state.Discuss.Order) != 1 {
+		t.Errorf("expected 1 item, got %d", len(m.state.Discuss.Order))
+	}
+}
+
+func TestInitStage_DiscussAlreadySet(t *testing.T) {
+	m := testModel()
+	existing := &protocol.DiscussState{Order: []string{"x"}, CurrentIndex: 2}
+	m.state = &protocol.RetroState{
+		Stage:   "discuss",
+		Discuss: existing,
+	}
+
+	m.initStage()
+
+	// Should not overwrite existing
+	if m.state.Discuss.CurrentIndex != 2 {
+		t.Error("should not overwrite existing discuss state")
+	}
+}
+
 func TestRenderStageBar(t *testing.T) {
 	m := testBrainstormModel()
 	bar := m.renderStageBar()

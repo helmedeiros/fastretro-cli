@@ -198,6 +198,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if idx := stageIndex(m.state.Stage); idx >= 0 && idx < len(allStages)-1 {
 				m.state.Stage = allStages[idx+1]
 				m.cursor = 0
+				m.initStage()
 				m.broadcastState()
 			}
 			return m, nil
@@ -323,6 +324,59 @@ func joinColumnsEqualHeight(contents []string, colStyles []lipgloss.Style) strin
 		rendered = append(rendered, r)
 	}
 	return lipgloss.JoinHorizontal(lipgloss.Top, rendered...)
+}
+
+// initStage initializes stage-specific state when entering a new stage.
+func (m *Model) initStage() {
+	if m.state == nil {
+		return
+	}
+	switch m.state.Stage {
+	case "discuss":
+		if m.state.Discuss == nil {
+			m.state.Discuss = m.buildDiscussState()
+		}
+	}
+}
+
+// buildDiscussState creates the discuss order from votable items sorted by votes descending.
+func (m Model) buildDiscussState() *protocol.DiscussState {
+	type votable struct {
+		id    string
+		votes int
+	}
+
+	grouped := m.groupedCardIDs()
+	var items []votable
+
+	// Groups as votable items
+	for _, g := range m.state.Groups {
+		items = append(items, votable{id: g.ID, votes: m.votesForItem(g.ID)})
+	}
+	// Ungrouped cards
+	for _, c := range m.state.Cards {
+		if !grouped[c.ID] {
+			items = append(items, votable{id: c.ID, votes: m.votesForItem(c.ID)})
+		}
+	}
+
+	// Sort by votes descending (stable: preserves insertion order for ties)
+	for i := 1; i < len(items); i++ {
+		for j := i; j > 0 && items[j].votes > items[j-1].votes; j-- {
+			items[j], items[j-1] = items[j-1], items[j]
+		}
+	}
+
+	var order []string
+	for _, item := range items {
+		order = append(order, item.id)
+	}
+
+	return &protocol.DiscussState{
+		Order:        order,
+		CurrentIndex: 0,
+		Segment:      "context",
+	}
 }
 
 var allStages = []string{"icebreaker", "brainstorm", "group", "vote", "discuss", "review", "close"}
