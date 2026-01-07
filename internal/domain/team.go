@@ -77,11 +77,19 @@ func RemoveMember(state TeamState, id string) (TeamState, error) {
 	return TeamState{Members: members, Agreements: state.Agreements}, nil
 }
 
-// AddAgreement adds a new agreement.
+// ErrDuplicateID is returned when an item with the same ID already exists.
+var ErrDuplicateID = errors.New("item with this ID already exists")
+
+// AddAgreement adds a new agreement. Skips if ID already exists.
 func AddAgreement(state TeamState, id, text, createdAt string) (TeamState, error) {
 	text = strings.TrimSpace(text)
 	if text == "" {
 		return state, ErrEmptyName
+	}
+	for _, a := range state.Agreements {
+		if a.ID == id {
+			return state, ErrDuplicateID
+		}
 	}
 	result := TeamState{
 		Members:    state.Members,

@@ -319,6 +319,26 @@ func (m HomeModel) View() string {
 	return b.String()
 }
 
+const maxPanelItems = 8
+
+// scrollWindow returns start/end indices for a visible window around the cursor.
+func scrollWindow(total, cursor, maxVisible int) (int, int) {
+	if total <= maxVisible {
+		return 0, total
+	}
+	half := maxVisible / 2
+	start := cursor - half
+	if start < 0 {
+		start = 0
+	}
+	end := start + maxVisible
+	if end > total {
+		end = total
+		start = end - maxVisible
+	}
+	return start, end
+}
+
 func (m HomeModel) renderMembers() string {
 	accent := lipgloss.NewStyle().Foreground(styles.Accent).Bold(true)
 	muted := lipgloss.NewStyle().Foreground(styles.Muted)
@@ -336,17 +356,30 @@ func (m HomeModel) renderMembers() string {
 
 	if len(m.team.Members) == 0 {
 		lines = append(lines, muted.Render("(empty)"))
-	}
-	for i, member := range m.team.Members {
-		cursor := "  "
-		if isActive && i == m.cursor {
-			cursor = "> "
+	} else {
+		cur := 0
+		if isActive {
+			cur = m.cursor
 		}
-		line := cursor + member.Name
-		if isActive && i == m.cursor {
-			lines = append(lines, styles.Selected.Render(line))
-		} else {
-			lines = append(lines, line)
+		start, end := scrollWindow(len(m.team.Members), cur, maxPanelItems)
+		if start > 0 {
+			lines = append(lines, muted.Render(fmt.Sprintf("  ↑ %d more", start)))
+		}
+		for i := start; i < end; i++ {
+			member := m.team.Members[i]
+			cursor := "  "
+			if isActive && i == m.cursor {
+				cursor = "> "
+			}
+			line := cursor + member.Name
+			if isActive && i == m.cursor {
+				lines = append(lines, styles.Selected.Render(line))
+			} else {
+				lines = append(lines, line)
+			}
+		}
+		if end < len(m.team.Members) {
+			lines = append(lines, muted.Render(fmt.Sprintf("  ↓ %d more", len(m.team.Members)-end)))
 		}
 	}
 	return strings.Join(lines, "\n")
@@ -369,17 +402,30 @@ func (m HomeModel) renderAgreements() string {
 
 	if len(m.team.Agreements) == 0 {
 		lines = append(lines, muted.Render("(empty)"))
-	}
-	for i, ag := range m.team.Agreements {
-		cursor := "  "
-		if isActive && i == m.cursor {
-			cursor = "> "
+	} else {
+		cur := 0
+		if isActive {
+			cur = m.cursor
 		}
-		line := cursor + ag.Text
-		if isActive && i == m.cursor {
-			lines = append(lines, styles.Selected.Render(line))
-		} else {
-			lines = append(lines, line)
+		start, end := scrollWindow(len(m.team.Agreements), cur, maxPanelItems)
+		if start > 0 {
+			lines = append(lines, muted.Render(fmt.Sprintf("  ↑ %d more", start)))
+		}
+		for i := start; i < end; i++ {
+			ag := m.team.Agreements[i]
+			cursor := "  "
+			if isActive && i == m.cursor {
+				cursor = "> "
+			}
+			line := cursor + ag.Text
+			if isActive && i == m.cursor {
+				lines = append(lines, styles.Selected.Render(line))
+			} else {
+				lines = append(lines, line)
+			}
+		}
+		if end < len(m.team.Agreements) {
+			lines = append(lines, muted.Render(fmt.Sprintf("  ↓ %d more", len(m.team.Agreements)-end)))
 		}
 	}
 	return strings.Join(lines, "\n")
@@ -403,25 +449,38 @@ func (m HomeModel) renderActions() string {
 
 	if len(items) == 0 {
 		lines = append(lines, muted.Render("(empty)"))
-	}
-	for i, item := range items {
-		cursor := "  "
-		if isActive && i == m.cursor {
-			cursor = "> "
+	} else {
+		cur := 0
+		if isActive {
+			cur = m.cursor
 		}
-		check := "[ ]"
-		if item.Done {
-			check = "[x]"
+		start, end := scrollWindow(len(items), cur, maxPanelItems)
+		if start > 0 {
+			lines = append(lines, muted.Render(fmt.Sprintf("  ↑ %d more", start)))
 		}
-		owner := ""
-		if item.OwnerName != "" {
-			owner = muted.Render(" → " + item.OwnerName)
+		for i := start; i < end; i++ {
+			item := items[i]
+			cursor := "  "
+			if isActive && i == m.cursor {
+				cursor = "> "
+			}
+			check := "[ ]"
+			if item.Done {
+				check = "[x]"
+			}
+			owner := ""
+			if item.OwnerName != "" {
+				owner = muted.Render(" → " + item.OwnerName)
+			}
+			line := fmt.Sprintf("%s%s %s%s", cursor, check, item.Text, owner)
+			if isActive && i == m.cursor {
+				lines = append(lines, styles.Selected.Render(line))
+			} else {
+				lines = append(lines, line)
+			}
 		}
-		line := fmt.Sprintf("%s%s %s%s", cursor, check, item.Text, owner)
-		if isActive && i == m.cursor {
-			lines = append(lines, styles.Selected.Render(line))
-		} else {
-			lines = append(lines, line)
+		if end < len(items) {
+			lines = append(lines, muted.Render(fmt.Sprintf("  ↓ %d more", len(items)-end)))
 		}
 	}
 	return strings.Join(lines, "\n")

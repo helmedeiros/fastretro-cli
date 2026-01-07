@@ -147,6 +147,15 @@ func TestRemoveMember_PreservesAgreements(t *testing.T) {
 
 // --- AddAgreement ---
 
+func TestAddAgreement_DuplicateID(t *testing.T) {
+	team := NewTeam()
+	team, _ = AddAgreement(team, "a1", "first", "2025-01-01")
+	_, err := AddAgreement(team, "a1", "second", "2025-01-01")
+	if err != ErrDuplicateID {
+		t.Errorf("expected ErrDuplicateID, got %v", err)
+	}
+}
+
 func TestAddAgreement(t *testing.T) {
 	team := NewTeam()
 	result, err := AddAgreement(team, "a1", "We demo every Friday", "2025-09-01")
