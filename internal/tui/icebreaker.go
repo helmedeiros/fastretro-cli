@@ -35,17 +35,25 @@ func (m Model) viewIcebreaker() string {
 	b.WriteString("\n\n")
 
 	// Current participant
-	if ib.CurrentIndex < len(ib.ParticipantIDs) {
+	allDone := ib.CurrentIndex >= len(ib.ParticipantIDs)
+	if !allDone {
 		pid := ib.ParticipantIDs[ib.CurrentIndex]
 		name := m.participantName(pid)
 		b.WriteString(fmt.Sprintf("  Answering: %s", accent.Render(name)))
+		b.WriteString("\n")
+	} else {
+		b.WriteString(accent.Render("  Icebreaker complete!"))
 		b.WriteString("\n")
 	}
 
 	// Participant order
 	if len(ib.ParticipantIDs) > 0 {
+		round := ib.CurrentIndex + 1
+		if allDone {
+			round = len(ib.ParticipantIDs)
+		}
 		b.WriteString(fmt.Sprintf("\n  %s\n\n", muted.Render(
-			fmt.Sprintf("Round %d of %d", ib.CurrentIndex+1, len(ib.ParticipantIDs)))))
+			fmt.Sprintf("Round %d of %d", round, len(ib.ParticipantIDs)))))
 		for i, pid := range ib.ParticipantIDs {
 			name := m.participantName(pid)
 			if i == ib.CurrentIndex {
@@ -80,8 +88,8 @@ func (m Model) handleIcebreakerKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.broadcastState()
 		}
 	case "n":
-		// Next participant
-		if ib.CurrentIndex < len(ib.ParticipantIDs)-1 {
+		// Next participant (allows going one past the end to mark last as done)
+		if ib.CurrentIndex < len(ib.ParticipantIDs) {
 			m.state.Icebreaker.CurrentIndex++
 			m.state.Icebreaker.Question = ""
 			m.broadcastState()

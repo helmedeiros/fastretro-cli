@@ -205,15 +205,41 @@ func TestHandleIcebreakerKeys_Next(t *testing.T) {
 	}
 }
 
-func TestHandleIcebreakerKeys_NextAtEnd(t *testing.T) {
+func TestHandleIcebreakerKeys_NextMarksLastDone(t *testing.T) {
 	m := testIcebreakerModel()
 	m.state.Icebreaker.CurrentIndex = 2 // last participant
 
 	result, _ := m.handleIcebreakerKeys(keyMsg("n"))
 	model := result.(Model)
 
-	if model.state.Icebreaker.CurrentIndex != 2 {
-		t.Error("should stay at end")
+	if model.state.Icebreaker.CurrentIndex != 3 {
+		t.Errorf("expected 3 (past end), got %d", model.state.Icebreaker.CurrentIndex)
+	}
+}
+
+func TestHandleIcebreakerKeys_NextPastEnd(t *testing.T) {
+	m := testIcebreakerModel()
+	m.state.Icebreaker.CurrentIndex = 3 // already past end
+
+	result, _ := m.handleIcebreakerKeys(keyMsg("n"))
+	model := result.(Model)
+
+	if model.state.Icebreaker.CurrentIndex != 3 {
+		t.Error("should not go further past end")
+	}
+}
+
+func TestViewIcebreaker_AllDone(t *testing.T) {
+	m := testIcebreakerModel()
+	m.state.Icebreaker.CurrentIndex = 3 // past all 3 participants
+	view := m.viewIcebreaker()
+
+	if !strings.Contains(view, "complete") {
+		t.Error("expected 'complete' message")
+	}
+	// All should show as done
+	if !strings.Contains(view, "done") {
+		t.Error("expected done markers")
 	}
 }
 
