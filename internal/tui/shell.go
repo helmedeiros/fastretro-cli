@@ -215,6 +215,9 @@ func (m ShellModel) updateNewRetro(msg tea.Msg) (tea.Model, tea.Cmd) {
 					name = protocol.Templates[m.templateCursor].Name
 				}
 				m.startLocalRetro(name)
+				if m.session.client != nil {
+					return m, m.session.Init()
+				}
 				return m, nil
 			case "esc":
 				m.retroNameInput = false
