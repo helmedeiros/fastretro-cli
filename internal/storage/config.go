@@ -76,3 +76,36 @@ func (r *JSONRegistryRepo) SetSelectedTeamID(id string) error {
 func (r *JSONRegistryRepo) TeamDir(teamID string) string {
 	return filepath.Join(r.baseDir, "teams", teamID)
 }
+
+type identityFile struct {
+	RoomCode      string `json:"roomCode"`
+	ParticipantID string `json:"participantId"`
+}
+
+// LoadIdentity returns the persisted identity for the given room code, if any.
+func (r *JSONRegistryRepo) LoadIdentity(roomCode string) string {
+	path := filepath.Join(r.baseDir, "identity.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	var id identityFile
+	if err := json.Unmarshal(data, &id); err != nil {
+		return ""
+	}
+	if id.RoomCode != roomCode {
+		return ""
+	}
+	return id.ParticipantID
+}
+
+// SaveIdentity persists the chosen identity for a room code.
+func (r *JSONRegistryRepo) SaveIdentity(roomCode, participantID string) {
+	if err := os.MkdirAll(r.baseDir, 0755); err != nil {
+		return
+	}
+	atomicWrite(filepath.Join(r.baseDir, "identity.json"), identityFile{
+		RoomCode:      roomCode,
+		ParticipantID: participantID,
+	})
+}

@@ -73,8 +73,23 @@ var joinCmd = &cobra.Command{
 		}
 		defer c.Close()
 
-		p := tea.NewProgram(tui.NewModel(c), tea.WithAltScreen())
-		_, err = p.Run()
+		model := tui.NewModel(c)
+
+		// Restore persisted identity for this room
+		reg := storage.NewJSONRegistryRepo(baseDir())
+		if saved := reg.LoadIdentity(c.RoomCode); saved != "" {
+			model.SetParticipantID(saved)
+			c.ClaimIdentity(saved)
+		}
+
+		p := tea.NewProgram(model, tea.WithAltScreen())
+		result, err := p.Run()
+
+		// Persist identity for next reconnect
+		if m, ok := result.(tui.Model); ok && m.ParticipantID() != "" {
+			reg.SaveIdentity(c.RoomCode, m.ParticipantID())
+		}
+
 		return err
 	},
 }

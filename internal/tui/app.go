@@ -73,6 +73,16 @@ func NewModel(c *client.Client) Model {
 	}
 }
 
+// SetParticipantID sets the chosen identity (used to restore persisted identity).
+func (m *Model) SetParticipantID(id string) {
+	m.participantID = id
+}
+
+// ParticipantID returns the current participant identity.
+func (m Model) ParticipantID() string {
+	return m.participantID
+}
+
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(
 		listenWS(m.client),

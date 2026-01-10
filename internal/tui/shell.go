@@ -169,8 +169,21 @@ func (m ShellModel) connectToRoom() (tea.Model, tea.Cmd) {
 	m.session.serverURL = m.serverURL
 	m.session.width = m.width
 	m.session.height = m.height
+
+	// Restore identity if reconnecting to the same room
+	if saved := m.registry.LoadIdentity(c.RoomCode); saved != "" {
+		m.session.participantID = saved
+		c.ClaimIdentity(saved)
+	}
+
 	m.mode = ModeSession
 	return m, m.session.Init()
+}
+
+func (m *ShellModel) rememberIdentity() {
+	if m.session.client != nil && m.session.participantID != "" {
+		m.registry.SaveIdentity(m.session.client.RoomCode, m.session.participantID)
+	}
 }
 
 func (m ShellModel) updateSession(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -178,6 +191,7 @@ func (m ShellModel) updateSession(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		// Intercept ctrl+c in session to return to home instead of quitting
 		if msg.String() == "ctrl+c" {
+			m.rememberIdentity()
 			m.saveSessionToHistory()
 			m.mode = ModeHome
 			m.home = NewHomeModel(m.registry, m.teamEntry) // refresh data
@@ -185,6 +199,7 @@ func (m ShellModel) updateSession(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// Intercept q when not in input mode
 		if msg.String() == "q" && !m.session.inputMode {
+			m.rememberIdentity()
 			m.saveSessionToHistory()
 			m.mode = ModeHome
 			m.home = NewHomeModel(m.registry, m.teamEntry)
@@ -192,13 +207,13 @@ func (m ShellModel) updateSession(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	prevID := m.session.participantID
 	updated, cmd := m.session.Update(msg)
 	m.session = updated.(Model)
 
-	// Check if session issued a quit command
-	if cmd != nil {
-		// We can't easily inspect tea.Cmd, so let the session handle quit
-		// The user will use ctrl+c or q to return to home
+	// Persist identity as soon as the user picks one
+	if m.session.participantID != "" && m.session.participantID != prevID {
+		m.rememberIdentity()
 	}
 
 	return m, cmd
