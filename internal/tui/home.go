@@ -506,24 +506,39 @@ func (m HomeModel) renderHistory() string {
 
 	if len(m.history.Completed) == 0 {
 		b.WriteString(muted.Render("  No retros completed yet"))
-	}
-	for i, retro := range m.history.Completed {
-		cursor := "  "
-		if isActive && i == m.cursor {
-			cursor = "> "
+	} else {
+		cur := 0
+		if isActive {
+			cur = m.cursor
 		}
-		name := retro.FullState.Meta.Name
-		if name == "" {
-			name = retro.ID
+		start, end := scrollWindow(len(m.history.Completed), cur, maxPanelItems)
+		if start > 0 {
+			b.WriteString(muted.Render(fmt.Sprintf("  ↑ %d more", start)))
+			b.WriteString("\n")
 		}
-		line := fmt.Sprintf("%s%s — %s — %d action items",
-			cursor, name, retro.CompletedAt, len(retro.ActionItems))
-		if isActive && i == m.cursor {
-			b.WriteString(styles.Selected.Render(line))
-		} else {
-			b.WriteString(line)
+		for i := start; i < end; i++ {
+			retro := m.history.Completed[i]
+			cursor := "  "
+			if isActive && i == m.cursor {
+				cursor = "> "
+			}
+			name := retro.FullState.Meta.Name
+			if name == "" {
+				name = retro.ID
+			}
+			line := fmt.Sprintf("%s%s — %s — %d action items",
+				cursor, name, retro.CompletedAt, len(retro.ActionItems))
+			if isActive && i == m.cursor {
+				b.WriteString(styles.Selected.Render(line))
+			} else {
+				b.WriteString(line)
+			}
+			b.WriteString("\n")
 		}
-		b.WriteString("\n")
+		if end < len(m.history.Completed) {
+			b.WriteString(muted.Render(fmt.Sprintf("  ↓ %d more", len(m.history.Completed)-end)))
+			b.WriteString("\n")
+		}
 	}
 	return b.String()
 }
