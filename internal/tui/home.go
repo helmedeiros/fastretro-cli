@@ -109,6 +109,8 @@ func (m HomeModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.startEdit()
 	case "enter", " ":
 		m.toggleAtCursor()
+	case "*":
+		m.toggleDefaultMember()
 	}
 	return m, nil
 }
@@ -259,6 +261,19 @@ func (m *HomeModel) deleteAtCursor() {
 	}
 }
 
+func (m *HomeModel) toggleDefaultMember() {
+	if m.section != SectionMembers || m.cursor >= len(m.team.Members) {
+		return
+	}
+	member := m.team.Members[m.cursor]
+	current := m.registry.LoadDefaultMember()
+	if strings.EqualFold(current, member.Name) {
+		m.registry.SaveDefaultMember("")
+	} else {
+		m.registry.SaveDefaultMember(member.Name)
+	}
+}
+
 func (m *HomeModel) toggleAtCursor() {
 	if m.section == SectionActions {
 		items := domain.GetAllActionItems(m.history)
@@ -311,7 +326,7 @@ func (m HomeModel) View() string {
 		b.WriteString(muted.Render("  [Enter] save  [Esc] cancel"))
 	} else {
 		b.WriteString("\n")
-		b.WriteString(muted.Render("[Tab] section  [a] add  [d] delete  [e] edit  [Enter] toggle done"))
+		b.WriteString(muted.Render("[Tab] section  [a] add  [d] delete  [e] edit  [Enter] toggle done  [*] set me"))
 		b.WriteString("\n")
 		b.WriteString(muted.Render("[j] join retro  [n] new retro  [t] teams  [q] quit"))
 	}
@@ -365,13 +380,18 @@ func (m HomeModel) renderMembers() string {
 		if start > 0 {
 			lines = append(lines, muted.Render(fmt.Sprintf("  ↑ %d more", start)))
 		}
+		defaultName := m.registry.LoadDefaultMember()
 		for i := start; i < end; i++ {
 			member := m.team.Members[i]
 			cursor := "  "
 			if isActive && i == m.cursor {
 				cursor = "> "
 			}
-			line := cursor + member.Name
+			suffix := ""
+			if strings.EqualFold(defaultName, member.Name) {
+				suffix = " " + accent.Render("(me)")
+			}
+			line := cursor + member.Name + suffix
 			if isActive && i == m.cursor {
 				lines = append(lines, styles.Selected.Render(line))
 			} else {

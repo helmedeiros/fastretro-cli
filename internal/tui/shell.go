@@ -175,6 +175,8 @@ func (m ShellModel) connectToRoom() (tea.Model, tea.Cmd) {
 		m.session.participantID = saved
 		c.ClaimIdentity(saved)
 	}
+	// Store default member name for auto-matching when state arrives
+	m.session.defaultMemberName = m.registry.LoadDefaultMember()
 
 	m.mode = ModeSession
 	return m, m.session.Init()
@@ -356,14 +358,29 @@ func (m *ShellModel) startLocalRetro(name string) {
 	}
 
 	m.session = Model{
-		client:    c,
-		state:     state,
-		teamInfo:  sessionTeamInfo,
-		serverURL: m.serverURL,
-		takenIDs:  make(map[string]bool),
-		width:     m.width,
-		height:    m.height,
+		client:            c,
+		state:             state,
+		teamInfo:          sessionTeamInfo,
+		defaultMemberName: m.registry.LoadDefaultMember(),
+		serverURL:         m.serverURL,
+		takenIDs:          make(map[string]bool),
+		width:             m.width,
+		height:            m.height,
 	}
+
+	// Auto-select default member if set
+	if defaultName := m.session.defaultMemberName; defaultName != "" {
+		for _, p := range state.Participants {
+			if strings.EqualFold(p.Name, defaultName) {
+				m.session.participantID = p.ID
+				if c != nil {
+					c.ClaimIdentity(p.ID)
+				}
+				break
+			}
+		}
+	}
+
 	m.mode = ModeSession
 }
 

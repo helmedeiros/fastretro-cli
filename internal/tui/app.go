@@ -45,22 +45,23 @@ type ErrMsg struct{ Err error }
 
 // Model is the main TUI model.
 type Model struct {
-	client        *client.Client
-	state         *protocol.RetroState
-	participantID string
-	takenIDs      map[string]bool
-	peerCount     int
-	cursor        int
-	inputText     string
-	inputMode     bool
-	activeCol     int
-	mergeSource   string // card ID selected as merge source
-	teamInfo      *protocol.SyncTeamInfo
-	serverURL     string
-	copyMsg       string
-	err           error
-	width         int
-	height        int
+	client            *client.Client
+	state             *protocol.RetroState
+	participantID     string
+	defaultMemberName string // auto-select participant matching this name
+	takenIDs          map[string]bool
+	peerCount         int
+	cursor            int
+	inputText         string
+	inputMode         bool
+	activeCol         int
+	mergeSource       string // card ID selected as merge source
+	teamInfo          *protocol.SyncTeamInfo
+	serverURL         string
+	copyMsg           string
+	err               error
+	width             int
+	height            int
 }
 
 // NewModel creates the initial model.
@@ -137,6 +138,18 @@ func (m Model) handleWS(msg protocol.IncomingMessage) (tea.Model, tea.Cmd) {
 	case "state":
 		if msg.State != nil {
 			m.state = msg.State
+			// Auto-select default member if no identity picked yet
+			if m.participantID == "" && m.defaultMemberName != "" {
+				for _, p := range m.state.Participants {
+					if strings.EqualFold(p.Name, m.defaultMemberName) && !m.takenIDs[p.ID] {
+						m.participantID = p.ID
+						if m.client != nil {
+							m.client.ClaimIdentity(p.ID)
+						}
+						break
+					}
+				}
+			}
 		}
 	case "peer-count":
 		m.peerCount = msg.Count

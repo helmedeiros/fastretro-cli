@@ -20,6 +20,7 @@ func NewJSONRegistryRepo(baseDir string) *JSONRegistryRepo {
 
 type configFile struct {
 	SelectedTeamID string `json:"selectedTeamId"`
+	DefaultMember  string `json:"defaultMember,omitempty"`
 }
 
 func (r *JSONRegistryRepo) List() ([]domain.TeamEntry, error) {
@@ -97,6 +98,34 @@ func (r *JSONRegistryRepo) LoadIdentity(roomCode string) string {
 		return ""
 	}
 	return id.ParticipantID
+}
+
+// LoadDefaultMember returns the stored default member name, if any.
+func (r *JSONRegistryRepo) LoadDefaultMember() string {
+	path := filepath.Join(r.baseDir, "config.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	var cfg configFile
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return ""
+	}
+	return cfg.DefaultMember
+}
+
+// SaveDefaultMember persists the default member name.
+func (r *JSONRegistryRepo) SaveDefaultMember(name string) {
+	path := filepath.Join(r.baseDir, "config.json")
+	var cfg configFile
+	if data, err := os.ReadFile(path); err == nil {
+		json.Unmarshal(data, &cfg)
+	}
+	cfg.DefaultMember = name
+	if err := os.MkdirAll(r.baseDir, 0755); err != nil {
+		return
+	}
+	atomicWrite(path, cfg)
 }
 
 // SaveIdentity persists the chosen identity for a room code.
