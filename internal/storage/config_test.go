@@ -147,3 +147,152 @@ func TestJSONRegistryRepo_TeamDir(t *testing.T) {
 		t.Errorf("expected %q, got %q", expected, dir)
 	}
 }
+
+func TestJSONRegistryRepo_SaveAndLoadIdentity(t *testing.T) {
+	dir := t.TempDir()
+	repo := NewJSONRegistryRepo(dir)
+
+	repo.SaveIdentity("ABC-DEF-123", "p-1")
+
+	got := repo.LoadIdentity("ABC-DEF-123")
+	if got != "p-1" {
+		t.Errorf("expected p-1, got %q", got)
+	}
+}
+
+func TestJSONRegistryRepo_LoadIdentity_WrongRoom(t *testing.T) {
+	dir := t.TempDir()
+	repo := NewJSONRegistryRepo(dir)
+
+	repo.SaveIdentity("ABC-DEF-123", "p-1")
+
+	got := repo.LoadIdentity("OTHER-ROOM")
+	if got != "" {
+		t.Errorf("expected empty for wrong room, got %q", got)
+	}
+}
+
+func TestJSONRegistryRepo_LoadIdentity_NotExists(t *testing.T) {
+	dir := t.TempDir()
+	repo := NewJSONRegistryRepo(dir)
+
+	got := repo.LoadIdentity("ANY-ROOM")
+	if got != "" {
+		t.Errorf("expected empty, got %q", got)
+	}
+}
+
+func TestJSONRegistryRepo_LoadIdentity_InvalidJSON(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "identity.json"), []byte("bad"), 0644)
+
+	repo := NewJSONRegistryRepo(dir)
+	got := repo.LoadIdentity("ANY-ROOM")
+	if got != "" {
+		t.Errorf("expected empty for invalid JSON, got %q", got)
+	}
+}
+
+func TestJSONRegistryRepo_SaveIdentity_Overwrites(t *testing.T) {
+	dir := t.TempDir()
+	repo := NewJSONRegistryRepo(dir)
+
+	repo.SaveIdentity("ROOM-1", "p-1")
+	repo.SaveIdentity("ROOM-2", "p-2")
+
+	if got := repo.LoadIdentity("ROOM-1"); got != "" {
+		t.Errorf("old room should be gone, got %q", got)
+	}
+	if got := repo.LoadIdentity("ROOM-2"); got != "p-2" {
+		t.Errorf("expected p-2, got %q", got)
+	}
+}
+
+func TestJSONRegistryRepo_SaveIdentity_CreatesDir(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "nested")
+	repo := NewJSONRegistryRepo(dir)
+
+	repo.SaveIdentity("ROOM", "p-1")
+
+	if _, err := os.Stat(filepath.Join(dir, "identity.json")); err != nil {
+		t.Errorf("file should exist: %v", err)
+	}
+}
+
+func TestJSONRegistryRepo_SaveAndLoadDefaultMember(t *testing.T) {
+	dir := t.TempDir()
+	repo := NewJSONRegistryRepo(dir)
+
+	repo.SaveDefaultMember("Alice")
+
+	got := repo.LoadDefaultMember()
+	if got != "Alice" {
+		t.Errorf("expected Alice, got %q", got)
+	}
+}
+
+func TestJSONRegistryRepo_LoadDefaultMember_NotExists(t *testing.T) {
+	dir := t.TempDir()
+	repo := NewJSONRegistryRepo(dir)
+
+	got := repo.LoadDefaultMember()
+	if got != "" {
+		t.Errorf("expected empty, got %q", got)
+	}
+}
+
+func TestJSONRegistryRepo_LoadDefaultMember_InvalidJSON(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "config.json"), []byte("bad"), 0644)
+
+	repo := NewJSONRegistryRepo(dir)
+	got := repo.LoadDefaultMember()
+	if got != "" {
+		t.Errorf("expected empty for invalid JSON, got %q", got)
+	}
+}
+
+func TestJSONRegistryRepo_SaveDefaultMember_PreservesSelectedTeam(t *testing.T) {
+	dir := t.TempDir()
+	repo := NewJSONRegistryRepo(dir)
+
+	if err := repo.SetSelectedTeamID("t1"); err != nil {
+		t.Fatalf("set error: %v", err)
+	}
+	repo.SaveDefaultMember("Bob")
+
+	id, err := repo.SelectedTeamID()
+	if err != nil {
+		t.Fatalf("get error: %v", err)
+	}
+	if id != "t1" {
+		t.Errorf("selected team lost, got %q", id)
+	}
+	if got := repo.LoadDefaultMember(); got != "Bob" {
+		t.Errorf("expected Bob, got %q", got)
+	}
+}
+
+func TestJSONRegistryRepo_SaveDefaultMember_ClearsWithEmpty(t *testing.T) {
+	dir := t.TempDir()
+	repo := NewJSONRegistryRepo(dir)
+
+	repo.SaveDefaultMember("Alice")
+	repo.SaveDefaultMember("")
+
+	got := repo.LoadDefaultMember()
+	if got != "" {
+		t.Errorf("expected empty, got %q", got)
+	}
+}
+
+func TestJSONRegistryRepo_SaveDefaultMember_CreatesDir(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "nested")
+	repo := NewJSONRegistryRepo(dir)
+
+	repo.SaveDefaultMember("Alice")
+
+	if _, err := os.Stat(filepath.Join(dir, "config.json")); err != nil {
+		t.Errorf("file should exist: %v", err)
+	}
+}
