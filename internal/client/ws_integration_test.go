@@ -273,6 +273,75 @@ func TestClose_NilConn(t *testing.T) {
 	}
 }
 
+func TestCreateRoom_Success(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if r.URL.Path != "/__api/rooms" {
+			t.Errorf("expected /__api/rooms, got %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"code": "ABC-DEF-123"})
+	}))
+	defer srv.Close()
+
+	code, err := CreateRoom(srv.URL)
+	if err != nil {
+		t.Fatalf("create room error: %v", err)
+	}
+	if code != "ABC-DEF-123" {
+		t.Errorf("expected ABC-DEF-123, got %q", code)
+	}
+}
+
+func TestCreateRoom_ServerError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("fail"))
+	}))
+	defer srv.Close()
+
+	_, err := CreateRoom(srv.URL)
+	if err == nil {
+		t.Error("expected error for server error response")
+	}
+}
+
+func TestCreateRoom_NetworkError(t *testing.T) {
+	_, err := CreateRoom("http://localhost:1")
+	if err == nil {
+		t.Error("expected error for unreachable server")
+	}
+}
+
+func TestCreateRoom_MalformedJSON(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("not json"))
+	}))
+	defer srv.Close()
+
+	_, err := CreateRoom(srv.URL)
+	if err == nil {
+		t.Error("expected error for malformed JSON")
+	}
+}
+
+func TestCreateRoom_TrailingSlash(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]string{"code": "XYZ-123-ABC"})
+	}))
+	defer srv.Close()
+
+	code, err := CreateRoom(srv.URL + "/")
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+	if code != "XYZ-123-ABC" {
+		t.Errorf("expected XYZ-123-ABC, got %q", code)
+	}
+}
+
 func TestReadMessage_ClosedConnection(t *testing.T) {
 	srv := startTestServer(t, func(conn *websocket.Conn) {
 		conn.Close()
