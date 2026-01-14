@@ -32,7 +32,10 @@ var rootCmd = &cobra.Command{
 		}
 
 		// Resolve selected team
-		selectedID, _ := reg.SelectedTeamID()
+		selectedID, err := reg.SelectedTeamID()
+		if err != nil {
+			return err
+		}
 		var entry domain.TeamEntry
 
 		if selectedID != "" {
@@ -47,7 +50,9 @@ var rootCmd = &cobra.Command{
 		// If no team selected but teams exist, pick first
 		if entry.ID == "" && len(entries) > 0 {
 			entry = entries[0]
-			reg.SetSelectedTeamID(entry.ID)
+			if err := reg.SetSelectedTeamID(entry.ID); err != nil {
+				return err
+			}
 		}
 
 		// Create shell — if no team, it starts in team selector mode
@@ -79,7 +84,9 @@ var joinCmd = &cobra.Command{
 		reg := storage.NewJSONRegistryRepo(baseDir())
 		if saved := reg.LoadIdentity(c.RoomCode); saved != "" {
 			model.SetParticipantID(saved)
-			c.ClaimIdentity(saved)
+			if err := c.ClaimIdentity(saved); err != nil {
+				return fmt.Errorf("failed to claim identity: %w", err)
+			}
 		}
 
 		p := tea.NewProgram(model, tea.WithAltScreen())
