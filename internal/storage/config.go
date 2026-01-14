@@ -115,7 +115,7 @@ func (r *JSONRegistryRepo) LoadDefaultMember() string {
 }
 
 // SaveDefaultMember persists the default member name.
-func (r *JSONRegistryRepo) SaveDefaultMember(name string) {
+func (r *JSONRegistryRepo) SaveDefaultMember(name string) error {
 	path := filepath.Join(r.baseDir, "config.json")
 	var cfg configFile
 	if data, err := os.ReadFile(path); err == nil {
@@ -123,17 +123,17 @@ func (r *JSONRegistryRepo) SaveDefaultMember(name string) {
 	}
 	cfg.DefaultMember = name
 	if err := os.MkdirAll(r.baseDir, 0755); err != nil {
-		return
+		return err
 	}
-	atomicWrite(path, cfg)
+	return atomicWrite(path, cfg)
 }
 
 // SaveIdentity persists the chosen identity for a room code.
-func (r *JSONRegistryRepo) SaveIdentity(roomCode, participantID string) {
+func (r *JSONRegistryRepo) SaveIdentity(roomCode, participantID string) error {
 	if err := os.MkdirAll(r.baseDir, 0755); err != nil {
-		return
+		return err
 	}
-	atomicWrite(filepath.Join(r.baseDir, "identity.json"), identityFile{
+	return atomicWrite(filepath.Join(r.baseDir, "identity.json"), identityFile{
 		RoomCode:      roomCode,
 		ParticipantID: participantID,
 	})

@@ -87,7 +87,7 @@ var joinCmd = &cobra.Command{
 
 		// Persist identity for next reconnect
 		if m, ok := result.(tui.Model); ok && m.ParticipantID() != "" {
-			reg.SaveIdentity(c.RoomCode, m.ParticipantID())
+			_ = reg.SaveIdentity(c.RoomCode, m.ParticipantID())
 		}
 
 		return err

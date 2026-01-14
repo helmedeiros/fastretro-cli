@@ -268,9 +268,9 @@ func (m *HomeModel) toggleDefaultMember() {
 	member := m.team.Members[m.cursor]
 	current := m.registry.LoadDefaultMember()
 	if strings.EqualFold(current, member.Name) {
-		m.registry.SaveDefaultMember("")
+		_ = m.registry.SaveDefaultMember("")
 	} else {
-		m.registry.SaveDefaultMember(member.Name)
+		_ = m.registry.SaveDefaultMember(member.Name)
 	}
 }
 

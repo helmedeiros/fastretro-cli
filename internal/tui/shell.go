@@ -184,7 +184,7 @@ func (m ShellModel) connectToRoom() (tea.Model, tea.Cmd) {
 
 func (m *ShellModel) rememberIdentity() {
 	if m.session.client != nil && m.session.participantID != "" {
-		m.registry.SaveIdentity(m.session.client.RoomCode, m.session.participantID)
+		_ = m.registry.SaveIdentity(m.session.client.RoomCode, m.session.participantID)
 	}
 }
 
