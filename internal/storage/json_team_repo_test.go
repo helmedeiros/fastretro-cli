@@ -168,3 +168,53 @@ func TestJSONTeamRepo_AtomicWrite(t *testing.T) {
 		t.Errorf("temp file should be cleaned up, found: %v", matches)
 	}
 }
+
+func TestAtomicWrite_InvalidValue(t *testing.T) {
+	dir := t.TempDir()
+	// channels cannot be marshaled to JSON
+	err := atomicWrite(filepath.Join(dir, "bad.json"), make(chan int))
+	if err == nil {
+		t.Error("expected error for unmarshalable value")
+	}
+}
+
+func TestAtomicWrite_ReadonlyDir(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "readonly", "file.json")
+	// Don't create the directory — write should fail
+	err := atomicWrite(path, "test")
+	if err == nil {
+		t.Error("expected error writing to non-existent directory")
+	}
+	// Verify no temp file left behind
+	matches, _ := filepath.Glob(filepath.Join(dir, "readonly", "*.tmp"))
+	if len(matches) != 0 {
+		t.Errorf("temp file should not exist, found: %v", matches)
+	}
+}
+
+func TestJSONTeamRepo_SaveTeam_CreatesDir(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "nested", "deep")
+	repo := NewJSONTeamRepo(dir)
+
+	if err := repo.SaveTeam(domain.NewTeam()); err != nil {
+		t.Fatalf("save error: %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(dir, "team.json")); err != nil {
+		t.Errorf("file should exist: %v", err)
+	}
+}
+
+func TestJSONTeamRepo_SaveHistory_CreatesDir(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "nested", "deep")
+	repo := NewJSONTeamRepo(dir)
+
+	if err := repo.SaveHistory(domain.NewHistory()); err != nil {
+		t.Fatalf("save error: %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(dir, "history.json")); err != nil {
+		t.Errorf("file should exist: %v", err)
+	}
+}

@@ -82,5 +82,9 @@ func atomicWrite(path string, v interface{}) error {
 	if err := os.WriteFile(tmp, data, 0644); err != nil {
 		return err
 	}
-	return os.Rename(tmp, path)
+	if err := os.Rename(tmp, path); err != nil {
+		os.Remove(tmp) // clean up temp file on rename failure
+		return err
+	}
+	return nil
 }
