@@ -342,6 +342,78 @@ func TestCreateRoom_TrailingSlash(t *testing.T) {
 	}
 }
 
+func TestFullSession_ConnectClaimSendClose(t *testing.T) {
+	received := make(chan string, 10)
+	srv := startTestServer(t, func(conn *websocket.Conn) {
+		// Echo back state, collect all messages
+		for {
+			_, data, err := conn.ReadMessage()
+			if err != nil {
+				return
+			}
+			received <- string(data)
+			// Echo state messages back
+			var msg map[string]interface{}
+			json.Unmarshal(data, &msg)
+			if msg["type"] == "state" {
+				conn.WriteMessage(websocket.TextMessage, data)
+			}
+		}
+	})
+	defer srv.Close()
+
+	wsURL := strings.Replace(srv.URL, "http://", "", 1)
+	c, err := Connect("SESSION-TEST", "http://"+wsURL)
+	if err != nil {
+		t.Fatalf("connect error: %v", err)
+	}
+
+	// Claim identity
+	if err := c.ClaimIdentity("alice"); err != nil {
+		t.Fatalf("claim error: %v", err)
+	}
+	msg := <-received
+	if !strings.Contains(msg, "claim-identity") {
+		t.Errorf("expected claim-identity, got %q", msg)
+	}
+
+	// Send state
+	state := &protocol.RetroState{
+		Stage: "brainstorm",
+		Meta:  protocol.RetroMeta{Name: "Session Test"},
+	}
+	if err := c.SendState(state); err != nil {
+		t.Fatalf("send state error: %v", err)
+	}
+	msg = <-received
+	if !strings.Contains(msg, "brainstorm") {
+		t.Errorf("expected brainstorm in state, got %q", msg)
+	}
+
+	// Read echoed state back
+	inmsg, err := c.ReadMessage()
+	if err != nil {
+		t.Fatalf("read error: %v", err)
+	}
+	if inmsg.Type != "state" {
+		t.Errorf("expected state type, got %q", inmsg.Type)
+	}
+
+	// Request state
+	if err := c.RequestState(); err != nil {
+		t.Fatalf("request state error: %v", err)
+	}
+	msg = <-received
+	if !strings.Contains(msg, "request-state") {
+		t.Errorf("expected request-state, got %q", msg)
+	}
+
+	// Close
+	if err := c.Close(); err != nil {
+		t.Errorf("close error: %v", err)
+	}
+}
+
 func TestReadMessage_ClosedConnection(t *testing.T) {
 	srv := startTestServer(t, func(conn *websocket.Conn) {
 		conn.Close()
