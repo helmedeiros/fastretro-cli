@@ -406,3 +406,128 @@ func TestHandleKey_GroupStage(t *testing.T) {
 	// but it shouldn't panic
 	_ = result
 }
+
+func TestHandleWS_StateAutoSelectsDefaultMember(t *testing.T) {
+	m := testModel()
+	m.defaultMemberName = "Alice"
+
+	msg := protocol.IncomingMessage{
+		Type: "state",
+		State: &protocol.RetroState{
+			Stage: "brainstorm",
+			Participants: []protocol.Participant{
+				{ID: "p1", Name: "Alice"},
+				{ID: "p2", Name: "Bob"},
+			},
+		},
+	}
+
+	result, _ := m.handleWS(msg)
+	model := result.(Model)
+
+	if model.participantID != "p1" {
+		t.Errorf("expected auto-select p1 (Alice), got %q", model.participantID)
+	}
+}
+
+func TestHandleWS_StateAutoSelectCaseInsensitive(t *testing.T) {
+	m := testModel()
+	m.defaultMemberName = "alice"
+
+	msg := protocol.IncomingMessage{
+		Type: "state",
+		State: &protocol.RetroState{
+			Stage: "brainstorm",
+			Participants: []protocol.Participant{
+				{ID: "p1", Name: "Alice"},
+			},
+		},
+	}
+
+	result, _ := m.handleWS(msg)
+	model := result.(Model)
+
+	if model.participantID != "p1" {
+		t.Errorf("expected auto-select p1, got %q", model.participantID)
+	}
+}
+
+func TestHandleWS_StateNoAutoSelectWhenAlreadyPicked(t *testing.T) {
+	m := testModel()
+	m.defaultMemberName = "Bob"
+	m.participantID = "p1" // already picked Alice
+
+	msg := protocol.IncomingMessage{
+		Type: "state",
+		State: &protocol.RetroState{
+			Stage: "brainstorm",
+			Participants: []protocol.Participant{
+				{ID: "p1", Name: "Alice"},
+				{ID: "p2", Name: "Bob"},
+			},
+		},
+	}
+
+	result, _ := m.handleWS(msg)
+	model := result.(Model)
+
+	if model.participantID != "p1" {
+		t.Errorf("should keep existing pick p1, got %q", model.participantID)
+	}
+}
+
+func TestHandleWS_StateNoAutoSelectWhenTaken(t *testing.T) {
+	m := testModel()
+	m.defaultMemberName = "Alice"
+	m.takenIDs["p1"] = true
+
+	msg := protocol.IncomingMessage{
+		Type: "state",
+		State: &protocol.RetroState{
+			Stage: "brainstorm",
+			Participants: []protocol.Participant{
+				{ID: "p1", Name: "Alice"},
+			},
+		},
+	}
+
+	result, _ := m.handleWS(msg)
+	model := result.(Model)
+
+	if model.participantID != "" {
+		t.Errorf("should not auto-select taken participant, got %q", model.participantID)
+	}
+}
+
+func TestHandleWS_StateNoAutoSelectNoMatch(t *testing.T) {
+	m := testModel()
+	m.defaultMemberName = "Charlie"
+
+	msg := protocol.IncomingMessage{
+		Type: "state",
+		State: &protocol.RetroState{
+			Stage: "brainstorm",
+			Participants: []protocol.Participant{
+				{ID: "p1", Name: "Alice"},
+			},
+		},
+	}
+
+	result, _ := m.handleWS(msg)
+	model := result.(Model)
+
+	if model.participantID != "" {
+		t.Errorf("should not auto-select when no match, got %q", model.participantID)
+	}
+}
+
+func TestSetAndGetParticipantID(t *testing.T) {
+	m := NewModel(nil)
+	if m.ParticipantID() != "" {
+		t.Errorf("expected empty, got %q", m.ParticipantID())
+	}
+	m.SetParticipantID("p-1")
+	if m.ParticipantID() != "p-1" {
+		t.Errorf("expected p-1, got %q", m.ParticipantID())
+	}
+}
