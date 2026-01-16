@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/helmedeiros/fastretro-cli/internal/protocol"
 )
 
@@ -518,6 +519,50 @@ func TestHandleWS_StateNoAutoSelectNoMatch(t *testing.T) {
 
 	if model.participantID != "" {
 		t.Errorf("should not auto-select when no match, got %q", model.participantID)
+	}
+}
+
+func TestRenderStageBar_AllStagesPresent(t *testing.T) {
+	m := testModelWithState()
+	m.participantID = "p1"
+	m.state.Stage = "brainstorm"
+
+	bar := m.renderStageBar()
+
+	for _, stage := range []string{"ICEBREAKER", "BRAINSTORM", "GROUP", "VOTE", "DISCUSS", "REVIEW", "CLOSE"} {
+		if !strings.Contains(bar, stage) {
+			t.Errorf("expected %s in stage bar", stage)
+		}
+	}
+}
+
+func TestStageIndex(t *testing.T) {
+	tests := []struct {
+		stage string
+		want  int
+	}{
+		{"icebreaker", 0},
+		{"brainstorm", 1},
+		{"close", 6},
+		{"unknown", -1},
+	}
+	for _, tt := range tests {
+		got := stageIndex(tt.stage)
+		if got != tt.want {
+			t.Errorf("stageIndex(%q) = %d, want %d", tt.stage, got, tt.want)
+		}
+	}
+}
+
+func TestJoinColumnsEqualHeight(t *testing.T) {
+	contents := []string{"A\nB", "C"}
+	colStyles := []lipgloss.Style{
+		lipgloss.NewStyle().Width(10),
+		lipgloss.NewStyle().Width(10),
+	}
+	result := joinColumnsEqualHeight(contents, colStyles)
+	if result == "" {
+		t.Error("expected non-empty result")
 	}
 }
 
