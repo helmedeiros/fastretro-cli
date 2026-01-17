@@ -796,3 +796,55 @@ func TestResolveOrCreateTeam_CreatesNew(t *testing.T) {
 		t.Error("expected team to be persisted")
 	}
 }
+
+func TestShell_RememberIdentity(t *testing.T) {
+	m := testShellModel(t)
+	m.session.participantID = "p1"
+	m.session.client = nil // no real client needed for the test
+
+	// No client means nothing saved
+	m.rememberIdentity()
+	if got := m.registry.LoadIdentity("any"); got != "" {
+		t.Errorf("should not save without client, got %q", got)
+	}
+}
+
+func TestShell_SessionIdentityPersistsOnPick(t *testing.T) {
+	m := testShellModel(t)
+	m.mode = ModeSession
+	m.session.state = &protocol.RetroState{
+		Stage: "brainstorm",
+		Participants: []protocol.Participant{
+			{ID: "p1", Name: "Alice"},
+			{ID: "p2", Name: "Bob"},
+		},
+	}
+	m.session.participantID = "" // not yet picked
+
+	// Simulate picking identity via join keys (enter on first participant)
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = result.(ShellModel)
+
+	if m.session.participantID != "p1" {
+		t.Errorf("expected p1, got %q", m.session.participantID)
+	}
+}
+
+func TestShell_DefaultMemberAutoSelect_OnLocalRetro(t *testing.T) {
+	m := testShellModel(t)
+	_ = m.registry.SaveDefaultMember("Alice")
+
+	// Add Alice as a team member first
+	repo := storage.NewJSONTeamRepo(m.registry.TeamDir(m.teamEntry.ID))
+	team, _ := repo.LoadTeam()
+	team, _ = domain.AddMember(team, "m1", "Alice")
+	repo.SaveTeam(team)
+	m.home = NewHomeModel(m.registry, m.teamEntry)
+
+	m.templateCursor = 0
+	m.startLocalRetro("Test Retro")
+
+	if m.session.participantID == "" {
+		t.Error("expected auto-select for default member")
+	}
+}
