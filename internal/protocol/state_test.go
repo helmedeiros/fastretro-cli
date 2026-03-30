@@ -244,3 +244,109 @@ func TestRetroState_WithDiscuss(t *testing.T) {
 		t.Errorf("action owner: got %q", decoded.ActionOwners["n2"])
 	}
 }
+
+func TestRetroMeta_TypeField(t *testing.T) {
+	meta := RetroMeta{Type: "check", Name: "HC", TemplateID: "health-check"}
+	data, err := json.Marshal(meta)
+	if err != nil {
+		t.Fatalf("marshal error: %v", err)
+	}
+
+	var decoded RetroMeta
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+
+	if decoded.Type != "check" {
+		t.Errorf("type: got %q, want 'check'", decoded.Type)
+	}
+}
+
+func TestRetroMeta_TypeDefaultsToEmpty(t *testing.T) {
+	// Simulates state from old CLI without type field
+	data := `{"name":"Sprint 1","date":"","context":"","templateId":"start-stop"}`
+	var meta RetroMeta
+	if err := json.Unmarshal([]byte(data), &meta); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if meta.Type != "" {
+		t.Errorf("expected empty type for old state, got %q", meta.Type)
+	}
+}
+
+func TestSurveyResponse_JSON(t *testing.T) {
+	r := SurveyResponse{
+		ID:            "r1",
+		ParticipantID: "p1",
+		QuestionID:    "ownership",
+		Rating:        4,
+		Comment:       "Good",
+	}
+	data, err := json.Marshal(r)
+	if err != nil {
+		t.Fatalf("marshal error: %v", err)
+	}
+
+	var decoded SurveyResponse
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+
+	if decoded.QuestionID != "ownership" {
+		t.Errorf("questionId: got %q", decoded.QuestionID)
+	}
+	if decoded.Rating != 4 {
+		t.Errorf("rating: got %d", decoded.Rating)
+	}
+	if decoded.Comment != "Good" {
+		t.Errorf("comment: got %q", decoded.Comment)
+	}
+}
+
+func TestRetroState_WithSurveyResponses(t *testing.T) {
+	state := RetroState{
+		Stage: "survey",
+		Meta:  RetroMeta{Type: "check", Name: "HC", TemplateID: "health-check"},
+		SurveyResponses: []SurveyResponse{
+			{ID: "r1", ParticipantID: "p1", QuestionID: "ownership", Rating: 4, Comment: ""},
+			{ID: "r2", ParticipantID: "p2", QuestionID: "ownership", Rating: 2, Comment: "Needs work"},
+		},
+	}
+
+	data, err := json.Marshal(state)
+	if err != nil {
+		t.Fatalf("marshal error: %v", err)
+	}
+
+	var decoded RetroState
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+
+	if decoded.Meta.Type != "check" {
+		t.Errorf("meta type: got %q", decoded.Meta.Type)
+	}
+	if len(decoded.SurveyResponses) != 2 {
+		t.Fatalf("expected 2 survey responses, got %d", len(decoded.SurveyResponses))
+	}
+	if decoded.SurveyResponses[1].Comment != "Needs work" {
+		t.Errorf("comment: got %q", decoded.SurveyResponses[1].Comment)
+	}
+}
+
+func TestRetroState_BackwardCompat_NoSurveyResponses(t *testing.T) {
+	// Old state without surveyResponses field
+	data := `{"stage":"brainstorm","meta":{"name":"Sprint 1","templateId":"start-stop"},"participants":[],"cards":[],"groups":[],"votes":[],"voteBudget":3,"discussNotes":[],"actionItemOwners":{}}`
+
+	var state RetroState
+	if err := json.Unmarshal([]byte(data), &state); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+
+	if state.SurveyResponses != nil {
+		t.Errorf("expected nil surveyResponses for old state, got %v", state.SurveyResponses)
+	}
+	if state.Meta.Type != "" {
+		t.Errorf("expected empty type for old state, got %q", state.Meta.Type)
+	}
+}

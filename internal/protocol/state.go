@@ -13,10 +13,21 @@ type RetroState struct {
 	VoteBudget     int            `json:"voteBudget"`
 	Discuss        *DiscussState  `json:"discuss"`
 	DiscussNotes   []DiscussNote  `json:"discussNotes"`
-	ActionOwners   map[string]string `json:"actionItemOwners"`
+	ActionOwners    map[string]string  `json:"actionItemOwners"`
+	SurveyResponses []SurveyResponse   `json:"surveyResponses"`
+}
+
+// SurveyResponse represents a participant's rating for a check question.
+type SurveyResponse struct {
+	ID            string `json:"id"`
+	ParticipantID string `json:"participantId"`
+	QuestionID    string `json:"questionId"`
+	Rating        int    `json:"rating"`
+	Comment       string `json:"comment"`
 }
 
 type RetroMeta struct {
+	Type       string `json:"type"`
 	Name       string `json:"name"`
 	Date       string `json:"date"`
 	Context    string `json:"context"`

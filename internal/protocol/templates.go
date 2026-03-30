@@ -1,5 +1,7 @@
 package protocol
 
+import "fmt"
+
 // ColumnTemplate describes a column within a facilitation template.
 type ColumnTemplate struct {
 	ID          string
@@ -82,6 +84,64 @@ func GetTemplate(id string) FacilitationTemplate {
 		}
 	}
 	return Templates[0]
+}
+
+// AnswerOption represents a selectable answer for a check question.
+type AnswerOption struct {
+	Value int
+	Label string
+}
+
+// CheckQuestion describes a single question within a check template.
+type CheckQuestion struct {
+	ID          string
+	Title       string
+	Description string
+	Options     []AnswerOption
+}
+
+// CheckTemplate describes a check format with its questions.
+type CheckTemplate struct {
+	ID        string
+	Name      string
+	Questions []CheckQuestion
+}
+
+func numericOptions(n int) []AnswerOption {
+	opts := make([]AnswerOption, n)
+	for i := range opts {
+		opts[i] = AnswerOption{Value: i + 1, Label: fmt.Sprintf("%d", i+1)}
+	}
+	return opts
+}
+
+// CheckTemplates mirrors the web app's check templates.
+var CheckTemplates = []CheckTemplate{
+	{
+		ID:   "health-check",
+		Name: "Health Check",
+		Questions: []CheckQuestion{
+			{ID: "ownership", Title: "Ownership", Description: "The team has clear ownership or a dedicated product owner who is accountable for the team's results and champions the mission inside and outside of the team.", Options: numericOptions(5)},
+			{ID: "value", Title: "Value", Description: "We can define and measure the value we provide to the business and the user.", Options: numericOptions(5)},
+			{ID: "goal-alignment", Title: "Goal Alignment", Description: "Everyone understands why they are here, supports the idea, and believes they have what it takes to create solutions that add value.", Options: numericOptions(5)},
+			{ID: "communication", Title: "Communication", Description: "We have clear and consistent communication that ensures that issues are shared, conflict is reduced, and everyone can work with greater efficiency.", Options: numericOptions(5)},
+			{ID: "team-roles", Title: "Team Roles", Description: "The current team skill set is right for the current stage and there are clear roles and responsibilities for each person in the team.", Options: numericOptions(5)},
+			{ID: "velocity", Title: "Velocity", Description: "We learn and implement lessons leading to incremental progress in iterations and production as we go.", Options: numericOptions(5)},
+			{ID: "support-and-resources", Title: "Support And Resources", Description: "We are equipped with the right tools and resources and can easily access support from within and outside the team.", Options: numericOptions(5)},
+			{ID: "process", Title: "Process", Description: "Our processes are aligned, effective, and free of unnecessary delays and blocks. We have metrics in place to measure our goals.", Options: numericOptions(5)},
+			{ID: "fun", Title: "Fun", Description: "We enjoy our work and working as a team. We are being challenged and can develop our skill set or acquire new ones.", Options: numericOptions(5)},
+		},
+	},
+}
+
+// GetCheckTemplate returns the check template for the given ID, or the first template as default.
+func GetCheckTemplate(id string) CheckTemplate {
+	for _, t := range CheckTemplates {
+		if t.ID == id {
+			return t
+		}
+	}
+	return CheckTemplates[0]
 }
 
 // GetColumnTemplate returns the column template for the given template and column IDs.

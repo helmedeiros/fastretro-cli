@@ -98,3 +98,77 @@ func TestTemplates_Count(t *testing.T) {
 		t.Errorf("expected 6 templates, got %d", len(Templates))
 	}
 }
+
+func TestGetCheckTemplate_HealthCheck(t *testing.T) {
+	tmpl := GetCheckTemplate("health-check")
+	if tmpl.ID != "health-check" {
+		t.Errorf("id: got %q", tmpl.ID)
+	}
+	if tmpl.Name != "Health Check" {
+		t.Errorf("name: got %q", tmpl.Name)
+	}
+	if len(tmpl.Questions) != 9 {
+		t.Errorf("expected 9 questions, got %d", len(tmpl.Questions))
+	}
+}
+
+func TestGetCheckTemplate_Unknown(t *testing.T) {
+	tmpl := GetCheckTemplate("nonexistent")
+	if tmpl.ID != "health-check" {
+		t.Errorf("expected default 'health-check', got %q", tmpl.ID)
+	}
+}
+
+func TestCheckTemplate_QuestionsHaveOptions(t *testing.T) {
+	tmpl := GetCheckTemplate("health-check")
+	for _, q := range tmpl.Questions {
+		if q.ID == "" {
+			t.Error("question has empty ID")
+		}
+		if q.Title == "" {
+			t.Errorf("question %q has empty title", q.ID)
+		}
+		if q.Description == "" {
+			t.Errorf("question %q has empty description", q.ID)
+		}
+		if len(q.Options) == 0 {
+			t.Errorf("question %q has no options", q.ID)
+		}
+		for _, opt := range q.Options {
+			if opt.Value < 1 {
+				t.Errorf("question %q option value %d < 1", q.ID, opt.Value)
+			}
+			if opt.Label == "" {
+				t.Errorf("question %q option with value %d has empty label", q.ID, opt.Value)
+			}
+		}
+	}
+}
+
+func TestCheckTemplate_HealthCheckQuestionTitles(t *testing.T) {
+	tmpl := GetCheckTemplate("health-check")
+	expected := []string{
+		"Ownership", "Value", "Goal Alignment", "Communication",
+		"Team Roles", "Velocity", "Support And Resources", "Process", "Fun",
+	}
+	if len(tmpl.Questions) != len(expected) {
+		t.Fatalf("expected %d questions, got %d", len(expected), len(tmpl.Questions))
+	}
+	for i, q := range tmpl.Questions {
+		if q.Title != expected[i] {
+			t.Errorf("question %d title: got %q, want %q", i, q.Title, expected[i])
+		}
+	}
+}
+
+func TestNumericOptions(t *testing.T) {
+	opts := numericOptions(5)
+	if len(opts) != 5 {
+		t.Fatalf("expected 5 options, got %d", len(opts))
+	}
+	for i, opt := range opts {
+		if opt.Value != i+1 {
+			t.Errorf("option %d value: got %d", i, opt.Value)
+		}
+	}
+}
