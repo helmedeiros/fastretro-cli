@@ -292,6 +292,7 @@ func (m *ShellModel) startLocalRetro(name string) {
 	state := &protocol.RetroState{
 		Stage: "icebreaker",
 		Meta: protocol.RetroMeta{
+			Type:       "retro",
 			Name:       name,
 			TemplateID: tmpl.ID,
 		},
