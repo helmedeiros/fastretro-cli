@@ -209,17 +209,18 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Stage navigation (available in all stages when not in input mode)
 	if !m.inputMode && m.state != nil {
+		stages := m.stagesForType()
 		switch msg.String() {
 		case "[":
-			if idx := stageIndex(m.state.Stage); idx > 0 {
-				m.state.Stage = allStages[idx-1]
+			if idx := stageIndexIn(m.state.Stage, stages); idx > 0 {
+				m.state.Stage = stages[idx-1]
 				m.cursor = 0
 				m.broadcastState()
 			}
 			return m, nil
 		case "]":
-			if idx := stageIndex(m.state.Stage); idx >= 0 && idx < len(allStages)-1 {
-				m.state.Stage = allStages[idx+1]
+			if idx := stageIndexIn(m.state.Stage, stages); idx >= 0 && idx < len(stages)-1 {
+				m.state.Stage = stages[idx+1]
 				m.cursor = 0
 				m.initStage()
 				m.broadcastState()
@@ -244,6 +245,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m.handleGroupKeys(msg)
 		case "vote":
 			return m.handleVoteKeys(msg)
+		case "survey":
+			return m.handleSurveyKeys(msg)
 		case "discuss":
 			return m.handleDiscussKeys(msg)
 		case "review":
@@ -317,6 +320,8 @@ func (m Model) View() string {
 		body = m.viewGroup()
 	case "vote":
 		body = m.viewVote()
+	case "survey":
+		body = m.viewSurvey()
 	case "discuss":
 		body = m.viewDiscuss()
 	case "review":
@@ -406,10 +411,18 @@ func (m Model) buildDiscussState() *protocol.DiscussState {
 	}
 }
 
-var allStages = []string{"icebreaker", "brainstorm", "group", "vote", "discuss", "review", "close"}
+var retroStages = []string{"icebreaker", "brainstorm", "group", "vote", "discuss", "review", "close"}
+var checkStages = []string{"icebreaker", "survey", "discuss", "review", "close"}
 
-func stageIndex(stage string) int {
-	for i, s := range allStages {
+func (m Model) stagesForType() []string {
+	if m.state != nil && m.state.Meta.Type == "check" {
+		return checkStages
+	}
+	return retroStages
+}
+
+func stageIndexIn(stage string, stages []string) int {
+	for i, s := range stages {
 		if s == stage {
 			return i
 		}
@@ -422,11 +435,12 @@ func (m Model) renderStageBar() string {
 		return ""
 	}
 
+	stages := m.stagesForType()
 	active := lipgloss.NewStyle().Foreground(styles.Accent).Bold(true).Underline(true)
 	inactive := lipgloss.NewStyle().Foreground(styles.Muted)
 
 	var parts []string
-	for _, s := range allStages {
+	for _, s := range stages {
 		label := strings.ToUpper(s)
 		if s == m.state.Stage {
 			parts = append(parts, active.Render(label))

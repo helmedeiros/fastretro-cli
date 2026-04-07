@@ -536,7 +536,7 @@ func TestRenderStageBar_AllStagesPresent(t *testing.T) {
 	}
 }
 
-func TestStageIndex(t *testing.T) {
+func TestStageIndexIn_Retro(t *testing.T) {
 	tests := []struct {
 		stage string
 		want  int
@@ -547,9 +547,28 @@ func TestStageIndex(t *testing.T) {
 		{"unknown", -1},
 	}
 	for _, tt := range tests {
-		got := stageIndex(tt.stage)
+		got := stageIndexIn(tt.stage, retroStages)
 		if got != tt.want {
-			t.Errorf("stageIndex(%q) = %d, want %d", tt.stage, got, tt.want)
+			t.Errorf("stageIndexIn(%q, retroStages) = %d, want %d", tt.stage, got, tt.want)
+		}
+	}
+}
+
+func TestStageIndexIn_Check(t *testing.T) {
+	tests := []struct {
+		stage string
+		want  int
+	}{
+		{"icebreaker", 0},
+		{"survey", 1},
+		{"discuss", 2},
+		{"close", 4},
+		{"brainstorm", -1},
+	}
+	for _, tt := range tests {
+		got := stageIndexIn(tt.stage, checkStages)
+		if got != tt.want {
+			t.Errorf("stageIndexIn(%q, checkStages) = %d, want %d", tt.stage, got, tt.want)
 		}
 	}
 }

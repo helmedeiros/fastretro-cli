@@ -43,25 +43,56 @@ func (m Model) viewDiscuss() string {
 	}
 	b.WriteString("\n\n")
 
-	// Carousel: show items with vote counts, current enlarged
+	isCheck := m.state.Meta.Type == "check"
+
+	// Carousel: show items with vote counts or medians, current enlarged
 	var carouselCards []string
 	for i, id := range order {
 		label := m.labelForItem(id)
-		votes := m.votesForItem(id)
-		subcards := m.subcardsForItem(id)
 
 		if i == discuss.CurrentIndex {
 			var lines []string
-			lines = append(lines, styles.Selected.Render(label))
-			for _, sc := range subcards {
-				lines = append(lines, styles.Subtitle.Render("  "+sc))
+			if isCheck {
+				median := m.medianForItem(id)
+				if median == 0 {
+					lines = append(lines, styles.VoteBadge.Render("—"))
+				} else {
+					lines = append(lines, styles.VoteBadge.Render(fmt.Sprintf("%.1f", median)))
+				}
 			}
-			lines = append(lines, styles.VoteBadge.Render(fmt.Sprintf("Votes: %d", votes)))
+			lines = append(lines, styles.Selected.Render(label))
+			if !isCheck {
+				subcards := m.subcardsForItem(id)
+				for _, sc := range subcards {
+					lines = append(lines, styles.Subtitle.Render("  "+sc))
+				}
+			}
+			if isCheck {
+				// Show question description for current item
+				tmpl := protocol.GetCheckTemplate(m.state.Meta.TemplateID)
+				for _, q := range tmpl.Questions {
+					if q.ID == id {
+						lines = append(lines, styles.Subtitle.Render(q.Description))
+						break
+					}
+				}
+			} else {
+				votes := m.votesForItem(id)
+				lines = append(lines, styles.VoteBadge.Render(fmt.Sprintf("Votes: %d", votes)))
+			}
 			carouselCards = append(carouselCards, styles.ActiveCard.Render(strings.Join(lines, "\n")))
 		} else {
 			content := label
-			if votes > 0 {
-				content += fmt.Sprintf("  +%d", votes)
+			if isCheck {
+				median := m.medianForItem(id)
+				if median > 0 {
+					content += fmt.Sprintf("  %.1f", median)
+				}
+			} else {
+				votes := m.votesForItem(id)
+				if votes > 0 {
+					content += fmt.Sprintf("  +%d", votes)
+				}
 			}
 			carouselCards = append(carouselCards, styles.Card.Render(content))
 		}
@@ -275,6 +306,15 @@ func (m Model) labelForItem(itemID string) string {
 	if m.state == nil {
 		return itemID
 	}
+	// For checks, resolve from template questions
+	if m.state.Meta.Type == "check" {
+		tmpl := protocol.GetCheckTemplate(m.state.Meta.TemplateID)
+		for _, q := range tmpl.Questions {
+			if q.ID == itemID {
+				return q.Title
+			}
+		}
+	}
 	for _, g := range m.state.Groups {
 		if g.ID == itemID {
 			return g.Name
@@ -286,6 +326,32 @@ func (m Model) labelForItem(itemID string) string {
 		}
 	}
 	return itemID
+}
+
+func (m Model) medianForItem(itemID string) float64 {
+	if m.state == nil {
+		return 0
+	}
+	var ratings []int
+	for _, r := range m.state.SurveyResponses {
+		if r.QuestionID == itemID {
+			ratings = append(ratings, r.Rating)
+		}
+	}
+	if len(ratings) == 0 {
+		return 0
+	}
+	// Sort
+	for i := 1; i < len(ratings); i++ {
+		for j := i; j > 0 && ratings[j] < ratings[j-1]; j-- {
+			ratings[j], ratings[j-1] = ratings[j-1], ratings[j]
+		}
+	}
+	mid := len(ratings) / 2
+	if len(ratings)%2 == 0 {
+		return float64(ratings[mid-1]+ratings[mid]) / 2.0
+	}
+	return float64(ratings[mid])
 }
 
 func (m Model) subcardsForItem(itemID string) []string {
