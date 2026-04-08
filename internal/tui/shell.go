@@ -21,6 +21,7 @@ const (
 	ModeHome ShellMode = iota
 	ModeJoinInput
 	ModeNewRetro
+	ModeNewCheck
 	ModeTeamSelect
 	ModeSession
 )
@@ -54,9 +55,10 @@ type ShellModel struct {
 	teamInput      string
 	teamInputMode  bool
 	teamAction     string // "create", "rename"
-	templateCursor int
-	retroName      string
-	retroNameInput bool
+	templateCursor      int
+	checkTemplateCursor int
+	retroName           string
+	retroNameInput      bool
 	width          int
 	height         int
 }
@@ -99,6 +101,8 @@ func (m ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateJoinInput(msg)
 	case ModeNewRetro:
 		return m.updateNewRetro(msg)
+	case ModeNewCheck:
+		return m.updateNewCheck(msg)
 	case ModeTeamSelect:
 		return m.updateTeamSelect(msg)
 	case ModeSession:
@@ -120,6 +124,12 @@ func (m ShellModel) updateHome(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "n":
 				m.mode = ModeNewRetro
 				m.templateCursor = 0
+				m.retroName = ""
+				m.retroNameInput = false
+				return m, nil
+			case "c":
+				m.mode = ModeNewCheck
+				m.checkTemplateCursor = 0
 				m.retroName = ""
 				m.retroNameInput = false
 				return m, nil
@@ -269,6 +279,191 @@ func (m ShellModel) updateNewRetro(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, nil
+}
+
+func (m ShellModel) updateNewCheck(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		if m.retroNameInput {
+			switch msg.String() {
+			case "enter":
+				name := m.retroName
+				if name == "" {
+					name = protocol.CheckTemplates[m.checkTemplateCursor].Name
+				}
+				m.startLocalCheck(name)
+				if m.session.client != nil {
+					return m, m.session.Init()
+				}
+				return m, nil
+			case "esc":
+				m.retroNameInput = false
+				m.retroName = ""
+			case "backspace":
+				if len(m.retroName) > 0 {
+					m.retroName = m.retroName[:len(m.retroName)-1]
+				}
+			default:
+				if len(msg.Runes) > 0 {
+					m.retroName += string(msg.Runes)
+				}
+			}
+			return m, nil
+		}
+
+		switch msg.String() {
+		case "esc":
+			m.mode = ModeHome
+			return m, nil
+		case "up", "k":
+			if m.checkTemplateCursor > 0 {
+				m.checkTemplateCursor--
+			}
+		case "down", "j":
+			if m.checkTemplateCursor < len(protocol.CheckTemplates)-1 {
+				m.checkTemplateCursor++
+			}
+		case "enter":
+			m.retroNameInput = true
+			m.retroName = ""
+		}
+	}
+	return m, nil
+}
+
+func (m *ShellModel) startLocalCheck(name string) {
+	tmpl := protocol.CheckTemplates[m.checkTemplateCursor]
+
+	var participants []protocol.Participant
+	for _, member := range m.home.team.Members {
+		participants = append(participants, protocol.Participant{
+			ID:   member.ID,
+			Name: member.Name,
+		})
+	}
+
+	var participantIDs []string
+	for _, p := range participants {
+		participantIDs = append(participantIDs, p.ID)
+	}
+
+	state := &protocol.RetroState{
+		Stage: "icebreaker",
+		Meta: protocol.RetroMeta{
+			Type:       "check",
+			Name:       name,
+			TemplateID: tmpl.ID,
+		},
+		Participants: participants,
+		Icebreaker: &protocol.Icebreaker{
+			Questions: []string{
+				"What is a book or show you would recommend right now?",
+				"If you could have any superpower for a day, what would it be?",
+				"What is something you learned recently that surprised you?",
+				"If you could travel anywhere tomorrow, where would you go?",
+				"What is your go-to comfort food?",
+				"What is the best advice you have ever received?",
+				"If you could master any skill instantly, what would it be?",
+				"What is a small thing that made you happy this week?",
+			},
+			ParticipantIDs: participantIDs,
+			CurrentIndex:   0,
+		},
+		Cards:           []protocol.Card{},
+		Groups:          []protocol.Group{},
+		Votes:           []protocol.Vote{},
+		VoteBudget:      3,
+		DiscussNotes:    []protocol.DiscussNote{},
+		SurveyResponses: []protocol.SurveyResponse{},
+	}
+
+	var c *client.Client
+	roomCode, err := client.CreateRoom(m.serverURL)
+	if err == nil {
+		c, err = client.Connect(roomCode, m.serverURL)
+		if err == nil {
+			c.SendState(state)
+			teamInfo := protocol.SyncTeamInfo{TeamName: m.teamEntry.Name}
+			for _, member := range m.home.team.Members {
+				teamInfo.Members = append(teamInfo.Members, protocol.TeamInfoMember{ID: member.ID, Name: member.Name})
+			}
+			for _, ag := range m.home.team.Agreements {
+				teamInfo.Agreements = append(teamInfo.Agreements, protocol.TeamInfoAgreement{ID: ag.ID, Text: ag.Text})
+			}
+			if msg, err := protocol.TeamInfoMessage(&teamInfo); err == nil {
+				c.Send(msg)
+			}
+		}
+	}
+
+	sessionTeamInfo := &protocol.SyncTeamInfo{TeamName: m.teamEntry.Name}
+	for _, member := range m.home.team.Members {
+		sessionTeamInfo.Members = append(sessionTeamInfo.Members, protocol.TeamInfoMember{ID: member.ID, Name: member.Name})
+	}
+	for _, ag := range m.home.team.Agreements {
+		sessionTeamInfo.Agreements = append(sessionTeamInfo.Agreements, protocol.TeamInfoAgreement{ID: ag.ID, Text: ag.Text})
+	}
+
+	m.session = Model{
+		client:            c,
+		state:             state,
+		teamInfo:          sessionTeamInfo,
+		defaultMemberName: m.registry.LoadDefaultMember(),
+		serverURL:         m.serverURL,
+		takenIDs:          make(map[string]bool),
+		width:             m.width,
+		height:            m.height,
+	}
+
+	if defaultName := m.session.defaultMemberName; defaultName != "" {
+		for _, p := range state.Participants {
+			if strings.EqualFold(p.Name, defaultName) {
+				m.session.participantID = p.ID
+				if c != nil {
+					c.ClaimIdentity(p.ID)
+				}
+				break
+			}
+		}
+	}
+
+	m.mode = ModeSession
+}
+
+func (m ShellModel) viewNewCheck() string {
+	accent := lipgloss.NewStyle().Foreground(styles.Accent).Bold(true)
+	muted := lipgloss.NewStyle().Foreground(styles.Muted)
+
+	var s string
+	s += accent.Render("New Check") + "\n\n"
+
+	if m.retroNameInput {
+		tmpl := protocol.CheckTemplates[m.checkTemplateCursor]
+		s += fmt.Sprintf("  Template: %s\n\n", accent.Render(tmpl.Name))
+		s += fmt.Sprintf("  Check name: %s▌\n", m.retroName)
+		s += "\n" + muted.Render("  [Enter] start  [Esc] back")
+		return s
+	}
+
+	s += "  Pick a template:\n\n"
+	for i, tmpl := range protocol.CheckTemplates {
+		cursor := "  "
+		if i == m.checkTemplateCursor {
+			cursor = "> "
+		}
+		line := fmt.Sprintf("%s%s (%d questions)", cursor, tmpl.Name, len(tmpl.Questions))
+		if i == m.checkTemplateCursor {
+			s += styles.Selected.Render(line) + "\n"
+			for _, q := range tmpl.Questions {
+				s += muted.Render(fmt.Sprintf("    %s — %s", q.Title, q.Description)) + "\n"
+			}
+		} else {
+			s += line + "\n"
+		}
+	}
+
+	s += "\n" + muted.Render("  [↑↓] select  [Enter] choose  [Esc] back")
+	return s
 }
 
 func (m *ShellModel) startLocalRetro(name string) {
@@ -696,6 +891,8 @@ func (m ShellModel) View() string {
 		return m.viewJoinInput()
 	case ModeNewRetro:
 		return m.viewNewRetro()
+	case ModeNewCheck:
+		return m.viewNewCheck()
 	case ModeTeamSelect:
 		return m.viewTeamSelect()
 	case ModeSession:
