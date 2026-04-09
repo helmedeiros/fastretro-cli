@@ -20,7 +20,11 @@ func (m Model) viewReview() string {
 	accent := lipgloss.NewStyle().Foreground(styles.Accent).Bold(true)
 	muted := lipgloss.NewStyle().Foreground(styles.Muted)
 
-	b.WriteString(accent.Render("Actions from this retrospective"))
+	sessionLabel := "retrospective"
+	if m.state.Meta.Type == "check" {
+		sessionLabel = "check"
+	}
+	b.WriteString(accent.Render("Actions from this " + sessionLabel))
 	b.WriteString("\n")
 	b.WriteString(muted.Render("────────────────────────────────────────"))
 	b.WriteString("\n\n")
@@ -72,46 +76,48 @@ func (m Model) viewReview() string {
 		b.WriteString("\n")
 	}
 
-	// --- Board overview ---
-	b.WriteString("\n")
-	b.WriteString(accent.Render("Board overview"))
-	b.WriteString("\n")
-	b.WriteString(muted.Render("────────────────────────────────────────"))
-	b.WriteString("\n\n")
+	// --- Board overview (retro only) ---
+	if m.state.Meta.Type != "check" {
+		b.WriteString("\n")
+		b.WriteString(accent.Render("Board overview"))
+		b.WriteString("\n")
+		b.WriteString(muted.Render("────────────────────────────────────────"))
+		b.WriteString("\n\n")
 
-	columns := m.getColumns()
-	grouped := m.groupedCardIDs()
+		columns := m.getColumns()
+		grouped := m.groupedCardIDs()
 
-	var boardContents []string
-	var boardStyles []lipgloss.Style
-	for _, col := range columns {
-		var lines []string
-		lines = append(lines, accent.Render(col.title))
-		lines = append(lines, "")
+		var boardContents []string
+		var boardStyles []lipgloss.Style
+		for _, col := range columns {
+			var lines []string
+			lines = append(lines, accent.Render(col.title))
+			lines = append(lines, "")
 
-		for _, g := range m.groupsForColumn(col.id) {
-			lines = append(lines, accent.Render(g.Name))
-			for _, cid := range g.CardIDs {
-				if card, ok := m.cardByID(cid); ok {
-					lines = append(lines, "  "+muted.Render(card.Text))
+			for _, g := range m.groupsForColumn(col.id) {
+				lines = append(lines, accent.Render(g.Name))
+				for _, cid := range g.CardIDs {
+					if card, ok := m.cardByID(cid); ok {
+						lines = append(lines, "  "+muted.Render(card.Text))
+					}
+				}
+				lines = append(lines, "")
+			}
+
+			for _, c := range m.cardsForColumn(col.id) {
+				if !grouped[c.ID] {
+					lines = append(lines, muted.Render(c.Text))
 				}
 			}
-			lines = append(lines, "")
+
+			boardContents = append(boardContents, strings.Join(lines, "\n"))
+			boardStyles = append(boardStyles, styles.Column)
 		}
 
-		for _, c := range m.cardsForColumn(col.id) {
-			if !grouped[c.ID] {
-				lines = append(lines, muted.Render(c.Text))
-			}
+		if len(boardContents) > 0 {
+			b.WriteString(joinColumnsEqualHeight(boardContents, boardStyles))
+			b.WriteString("\n")
 		}
-
-		boardContents = append(boardContents, strings.Join(lines, "\n"))
-		boardStyles = append(boardStyles, styles.Column)
-	}
-
-	if len(boardContents) > 0 {
-		b.WriteString(joinColumnsEqualHeight(boardContents, boardStyles))
-		b.WriteString("\n")
 	}
 
 	// Help

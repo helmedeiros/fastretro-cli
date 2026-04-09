@@ -839,11 +839,22 @@ func (m *ShellModel) saveSessionToHistory() {
 				}
 			}
 			parentText := ""
-			// Find parent card/group text
-			for _, g := range state.Groups {
-				if g.ID == n.ParentCardID {
-					parentText = g.Name
-					break
+			// Find parent card/group/question text
+			if state.Meta.Type == "check" {
+				tmpl := protocol.GetCheckTemplate(state.Meta.TemplateID)
+				for _, q := range tmpl.Questions {
+					if q.ID == n.ParentCardID {
+						parentText = q.Title
+						break
+					}
+				}
+			}
+			if parentText == "" {
+				for _, g := range state.Groups {
+					if g.ID == n.ParentCardID {
+						parentText = g.Name
+						break
+					}
 				}
 			}
 			if parentText == "" {

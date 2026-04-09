@@ -371,8 +371,13 @@ func (m *Model) initStage() {
 	}
 }
 
-// buildDiscussState creates the discuss order from votable items sorted by votes descending.
+// buildDiscussState creates the discuss order. For retros: votable items by votes desc.
+// For checks: template questions by median asc (worst first).
 func (m Model) buildDiscussState() *protocol.DiscussState {
+	if m.state.Meta.Type == "check" {
+		return m.buildCheckDiscussState()
+	}
+
 	type votable struct {
 		id    string
 		votes int
@@ -381,18 +386,15 @@ func (m Model) buildDiscussState() *protocol.DiscussState {
 	grouped := m.groupedCardIDs()
 	var items []votable
 
-	// Groups as votable items
 	for _, g := range m.state.Groups {
 		items = append(items, votable{id: g.ID, votes: m.votesForItem(g.ID)})
 	}
-	// Ungrouped cards
 	for _, c := range m.state.Cards {
 		if !grouped[c.ID] {
 			items = append(items, votable{id: c.ID, votes: m.votesForItem(c.ID)})
 		}
 	}
 
-	// Sort by votes descending (stable: preserves insertion order for ties)
 	for i := 1; i < len(items); i++ {
 		for j := i; j > 0 && items[j].votes > items[j-1].votes; j-- {
 			items[j], items[j-1] = items[j-1], items[j]
@@ -408,6 +410,38 @@ func (m Model) buildDiscussState() *protocol.DiscussState {
 		Order:        order,
 		CurrentIndex: 0,
 		Segment:      "context",
+	}
+}
+
+func (m Model) buildCheckDiscussState() *protocol.DiscussState {
+	tmpl := protocol.GetCheckTemplate(m.state.Meta.TemplateID)
+
+	type item struct {
+		id     string
+		median float64
+	}
+
+	var items []item
+	for _, q := range tmpl.Questions {
+		items = append(items, item{id: q.ID, median: m.medianForItem(q.ID)})
+	}
+
+	// Sort ascending by median (worst first)
+	for i := 1; i < len(items); i++ {
+		for j := i; j > 0 && items[j].median < items[j-1].median; j-- {
+			items[j], items[j-1] = items[j-1], items[j]
+		}
+	}
+
+	var order []string
+	for _, it := range items {
+		order = append(order, it.id)
+	}
+
+	return &protocol.DiscussState{
+		Order:        order,
+		CurrentIndex: 0,
+		Segment:      "actions",
 	}
 }
 
