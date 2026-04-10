@@ -132,6 +132,17 @@ var CheckTemplates = []CheckTemplate{
 			{ID: "fun", Title: "Fun", Description: "We enjoy our work and working as a team. We are being challenged and can develop our skill set or acquire new ones.", Options: numericOptions(5)},
 		},
 	},
+	{
+		ID:   "dora-metrics",
+		Name: "DORA Metrics Quiz",
+		Questions: []CheckQuestion{
+			{ID: "lead-time", Title: "Lead Time for Changes", Description: "For the primary application or service you work on, what is your lead time for changes (that is, how long does it take to go from code committed to code successfully running in production)?", Options: []AnswerOption{{1, "More than six months"}, {2, "One to six months"}, {3, "One week to one month"}, {4, "One day to one week"}, {5, "Less than one day"}, {6, "Less than one hour"}}},
+			{ID: "deploy-frequency", Title: "Deploy Frequency", Description: "For the primary application or service you work on, how often does your organization deploy code to production or release it to end users?", Options: []AnswerOption{{1, "Less than once per six months"}, {2, "Between once per month and once every six months"}, {3, "Between once per week and once per month"}, {4, "Between once per day and once per week"}, {5, "Between once per hour and once per day"}, {6, "On demand (multiple deploys per day)"}}},
+			{ID: "failure-recovery", Title: "Failure Recovery", Description: "For the primary application or service you work on, how long does it generally take to restore service after a change to production or release to users results in degraded service?", Options: []AnswerOption{{1, "More than six months"}, {2, "One to six months"}, {3, "One week to one month"}, {4, "One day to one week"}, {5, "Less than one day"}, {6, "Less than one hour"}}},
+			{ID: "change-failure-rate", Title: "Change Failure Rate", Description: "For the primary application or service you work on, what percentage of changes to production or releases to users result in degraded service and subsequently require remediation?", Options: []AnswerOption{{1, "76-100%"}, {2, "46-75%"}, {3, "16-45%"}, {4, "0-15%"}}},
+			{ID: "reliability", Title: "Reliability", Description: "How would you rate the reliability of the primary application or service you work on, considering its availability and performance against your targets?", Options: []AnswerOption{{1, "Very low — frequently misses targets"}, {2, "Low — occasionally misses targets"}, {3, "Medium — meets targets most of the time"}, {4, "High — consistently meets targets"}, {5, "Very high — exceeds targets"}}},
+		},
+	},
 }
 
 // GetCheckTemplate returns the check template for the given ID, or the first template as default.
