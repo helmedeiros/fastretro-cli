@@ -566,6 +566,43 @@ func (m HomeModel) renderActions() string {
 	return strings.Join(lines, "\n")
 }
 
+func overallCheckScore(state protocol.RetroState, tmpl protocol.CheckTemplate) float64 {
+	if len(tmpl.Questions) == 0 || len(state.SurveyResponses) == 0 {
+		return 0
+	}
+	var sum float64
+	var count int
+	for _, q := range tmpl.Questions {
+		var ratings []int
+		for _, r := range state.SurveyResponses {
+			if r.QuestionID == q.ID && r.Rating > 0 {
+				ratings = append(ratings, r.Rating)
+			}
+		}
+		if len(ratings) == 0 {
+			continue
+		}
+		for i := 1; i < len(ratings); i++ {
+			for j := i; j > 0 && ratings[j] < ratings[j-1]; j-- {
+				ratings[j], ratings[j-1] = ratings[j-1], ratings[j]
+			}
+		}
+		mid := len(ratings) / 2
+		var median float64
+		if len(ratings)%2 == 0 {
+			median = float64(ratings[mid-1]+ratings[mid]) / 2.0
+		} else {
+			median = float64(ratings[mid])
+		}
+		sum += median
+		count++
+	}
+	if count == 0 {
+		return 0
+	}
+	return sum / float64(count)
+}
+
 func (m HomeModel) renderFilteredHistory(title string, items []domain.CompletedRetro, isActive bool) string {
 	accent := lipgloss.NewStyle().Foreground(styles.Accent).Bold(true)
 	muted := lipgloss.NewStyle().Foreground(styles.Muted)
@@ -622,8 +659,13 @@ func (m HomeModel) renderFilteredHistory(title string, items []domain.CompletedR
 		var statsLine string
 		if isCheck {
 			tmpl := protocol.GetCheckTemplate(retro.FullState.Meta.TemplateID)
-			statsLine = fmt.Sprintf("%d participants | %d questions | %d actions",
-				participants, len(tmpl.Questions), actionCount)
+			overallScore := overallCheckScore(retro.FullState, tmpl)
+			scoreStr := "—"
+			if overallScore > 0 {
+				scoreStr = fmt.Sprintf("%.1f", overallScore)
+			}
+			statsLine = fmt.Sprintf("%d participants | score %s | %d actions",
+				participants, scoreStr, actionCount)
 		} else {
 			cards := len(retro.FullState.Cards)
 			votes := len(retro.FullState.Votes)
