@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -381,6 +382,7 @@ func (m *ShellModel) startLocalCheck(name string) {
 		Meta: protocol.RetroMeta{
 			Type:       "check",
 			Name:       name,
+			Date:       time.Now().Format("2006-01-02"),
 			TemplateID: tmpl.ID,
 		},
 		Participants: participants,
@@ -518,6 +520,7 @@ func (m *ShellModel) startLocalRetro(name string) {
 		Meta: protocol.RetroMeta{
 			Type:       "retro",
 			Name:       name,
+			Date:       time.Now().Format("2006-01-02"),
 			TemplateID: tmpl.ID,
 		},
 		Participants: participants,
