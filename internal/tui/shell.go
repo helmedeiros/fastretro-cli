@@ -24,6 +24,7 @@ const (
 	ModeNewCheck
 	ModeTeamSelect
 	ModeSession
+	ModeViewHistory
 )
 
 // JoinStartMsg signals the shell to show the room code input.
@@ -59,6 +60,7 @@ type ShellModel struct {
 	checkTemplateCursor int
 	retroName           string
 	retroNameInput      bool
+	historyView    Model // reused Model to render close view for completed sessions
 	width          int
 	height         int
 }
@@ -107,12 +109,39 @@ func (m ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateTeamSelect(msg)
 	case ModeSession:
 		return m.updateSession(msg)
+	case ModeViewHistory:
+		return m.updateViewHistory(msg)
+	}
+	return m, nil
+}
+
+func (m ShellModel) updateViewHistory(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "q", "esc", "ctrl+c":
+			m.mode = ModeHome
+			m.home = NewHomeModel(m.registry, m.teamEntry)
+			return m, nil
+		}
 	}
 	return m, nil
 }
 
 func (m ShellModel) updateHome(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case ViewHistoryMsg:
+		if msg.State != nil {
+			m.historyView = Model{
+				state:         msg.State,
+				participantID: "viewer",
+				takenIDs:      make(map[string]bool),
+				width:         m.width,
+				height:        m.height,
+			}
+			m.mode = ModeViewHistory
+		}
+		return m, nil
 	case tea.KeyMsg:
 		if !m.home.inputMode {
 			switch msg.String() {
@@ -908,6 +937,8 @@ func (m ShellModel) View() string {
 		return m.viewTeamSelect()
 	case ModeSession:
 		return m.session.View()
+	case ModeViewHistory:
+		return m.historyView.viewClose() + "\n"
 	default:
 		return m.home.View()
 	}

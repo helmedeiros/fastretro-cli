@@ -130,8 +130,14 @@ func TestHome_TabCyclesSections(t *testing.T) {
 
 	result, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
 	m = result.(HomeModel)
-	if m.section != SectionHistory {
-		t.Errorf("expected history, got %d", m.section)
+	if m.section != SectionRetroHistory {
+		t.Errorf("expected retro history, got %d", m.section)
+	}
+
+	result, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	m = result.(HomeModel)
+	if m.section != SectionCheckHistory {
+		t.Errorf("expected check history, got %d", m.section)
 	}
 
 	result, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
@@ -145,8 +151,8 @@ func TestHome_ShiftTabReverse(t *testing.T) {
 	m := testHomeModel(t)
 	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
 	m = result.(HomeModel)
-	if m.section != SectionHistory {
-		t.Errorf("expected history, got %d", m.section)
+	if m.section != SectionCheckHistory {
+		t.Errorf("expected check history, got %d", m.section)
 	}
 }
 
@@ -390,7 +396,7 @@ func TestHome_EmptyTeam(t *testing.T) {
 
 func TestHome_AddOnHistory_NoOp(t *testing.T) {
 	m := testHomeModel(t)
-	m.section = SectionHistory
+	m.section = SectionRetroHistory
 	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("a")})
 	m = result.(HomeModel)
 	if m.inputMode {

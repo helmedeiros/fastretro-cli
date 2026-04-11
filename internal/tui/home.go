@@ -7,6 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/helmedeiros/fastretro-cli/internal/domain"
+	"github.com/helmedeiros/fastretro-cli/internal/protocol"
 	"github.com/helmedeiros/fastretro-cli/internal/storage"
 	"github.com/helmedeiros/fastretro-cli/internal/styles"
 )
@@ -18,10 +19,17 @@ const (
 	SectionMembers HomeSection = iota
 	SectionAgreements
 	SectionActions
-	SectionHistory
+	SectionRetroHistory
+	SectionCheckHistory
+	sectionCount
 )
 
-var sectionNames = []string{"MEMBERS", "AGREEMENTS", "ACTION ITEMS", "HISTORY"}
+var sectionNames = []string{"MEMBERS", "AGREEMENTS", "ACTION ITEMS", "RETRO HISTORY", "CHECK HISTORY"}
+
+// ViewHistoryMsg signals the shell to display a completed session's close view.
+type ViewHistoryMsg struct {
+	State *protocol.RetroState
+}
 
 // HomeModel is the Bubble Tea model for the dashboard home screen.
 type HomeModel struct {
@@ -84,10 +92,10 @@ func (m HomeModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "ctrl+c", "q":
 		return m, tea.Quit
 	case "tab":
-		m.section = (m.section + 1) % 4
+		m.section = (m.section + 1) % sectionCount
 		m.cursor = 0
 	case "shift+tab":
-		m.section = (m.section + 3) % 4
+		m.section = (m.section + sectionCount - 1) % sectionCount
 		m.cursor = 0
 	case "up", "k":
 		if m.cursor > 0 {
@@ -108,6 +116,9 @@ func (m HomeModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "e":
 		m.startEdit()
 	case "enter", " ":
+		if m.section == SectionRetroHistory || m.section == SectionCheckHistory {
+			return m.viewHistoryAtCursor()
+		}
 		m.toggleAtCursor()
 	case "*":
 		m.toggleDefaultMember()
@@ -140,6 +151,26 @@ func (m HomeModel) handleInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m HomeModel) retroHistory() []domain.CompletedRetro {
+	var result []domain.CompletedRetro
+	for _, r := range m.history.Completed {
+		if r.FullState.Meta.Type != "check" {
+			result = append(result, r)
+		}
+	}
+	return result
+}
+
+func (m HomeModel) checkHistory() []domain.CompletedRetro {
+	var result []domain.CompletedRetro
+	for _, r := range m.history.Completed {
+		if r.FullState.Meta.Type == "check" {
+			result = append(result, r)
+		}
+	}
+	return result
+}
+
 func (m HomeModel) sectionLen() int {
 	switch m.section {
 	case SectionMembers:
@@ -148,8 +179,10 @@ func (m HomeModel) sectionLen() int {
 		return len(m.team.Agreements)
 	case SectionActions:
 		return len(domain.GetAllActionItems(m.history))
-	case SectionHistory:
-		return len(m.history.Completed)
+	case SectionRetroHistory:
+		return len(m.retroHistory())
+	case SectionCheckHistory:
+		return len(m.checkHistory())
 	}
 	return 0
 }
@@ -284,6 +317,20 @@ func (m *HomeModel) toggleAtCursor() {
 	}
 }
 
+func (m HomeModel) viewHistoryAtCursor() (tea.Model, tea.Cmd) {
+	var items []domain.CompletedRetro
+	if m.section == SectionCheckHistory {
+		items = m.checkHistory()
+	} else {
+		items = m.retroHistory()
+	}
+	if m.cursor >= len(items) {
+		return m, nil
+	}
+	state := items[m.cursor].FullState
+	return m, func() tea.Msg { return ViewHistoryMsg{State: &state} }
+}
+
 func (m HomeModel) View() string {
 	accent := lipgloss.NewStyle().Foreground(styles.Accent).Bold(true)
 	muted := lipgloss.NewStyle().Foreground(styles.Muted)
@@ -315,8 +362,21 @@ func (m HomeModel) View() string {
 	b.WriteString(joinColumnsEqualHeight(panelContents, panelStyles))
 	b.WriteString("\n\n")
 
-	// History section
-	b.WriteString(m.renderHistory())
+	// History sections side by side
+	retroHist := m.renderFilteredHistory("RETRO HISTORY", m.retroHistory(), m.section == SectionRetroHistory)
+	checkHist := m.renderFilteredHistory("CHECK HISTORY", m.checkHistory(), m.section == SectionCheckHistory)
+
+	histContents := []string{retroHist, checkHist}
+	histStyles := make([]lipgloss.Style, 2)
+	for i := range histStyles {
+		style := styles.Column
+		section := SectionRetroHistory + HomeSection(i)
+		if m.section == section {
+			style = style.BorderForeground(styles.Accent)
+		}
+		histStyles[i] = style
+	}
+	b.WriteString(joinColumnsEqualHeight(histContents, histStyles))
 	b.WriteString("\n")
 
 	// Input or help
@@ -326,7 +386,7 @@ func (m HomeModel) View() string {
 		b.WriteString(muted.Render("  [Enter] save  [Esc] cancel"))
 	} else {
 		b.WriteString("\n")
-		b.WriteString(muted.Render("[Tab] section  [a] add  [d] delete  [e] edit  [Enter] toggle done  [*] set me"))
+		b.WriteString(muted.Render("[Tab] section  [a] add  [d] delete  [e] edit  [Enter] toggle done / view  [*] set me"))
 		b.WriteString("\n")
 		b.WriteString(muted.Render("[j] join  [n] new retro  [c] new check  [t] teams  [q] quit"))
 	}
@@ -506,12 +566,11 @@ func (m HomeModel) renderActions() string {
 	return strings.Join(lines, "\n")
 }
 
-func (m HomeModel) renderHistory() string {
+func (m HomeModel) renderFilteredHistory(title string, items []domain.CompletedRetro, isActive bool) string {
 	accent := lipgloss.NewStyle().Foreground(styles.Accent).Bold(true)
 	muted := lipgloss.NewStyle().Foreground(styles.Muted)
-	isActive := m.section == SectionHistory
 
-	header := fmt.Sprintf("RETRO HISTORY (%d)", len(m.history.Completed))
+	header := fmt.Sprintf("%s (%d)", title, len(items))
 	if isActive {
 		header = accent.Render(header)
 	} else {
@@ -521,23 +580,22 @@ func (m HomeModel) renderHistory() string {
 	var b strings.Builder
 	b.WriteString(header)
 	b.WriteString("\n")
-	b.WriteString(muted.Render(strings.Repeat("─", 40)))
-	b.WriteString("\n")
 
-	if len(m.history.Completed) == 0 {
-		b.WriteString(muted.Render("  No retros completed yet"))
+	emptyLabel := "No sessions yet"
+	if len(items) == 0 {
+		b.WriteString(muted.Render("  " + emptyLabel))
 	} else {
 		cur := 0
 		if isActive {
 			cur = m.cursor
 		}
-		start, end := scrollWindow(len(m.history.Completed), cur, maxPanelItems)
+		start, end := scrollWindow(len(items), cur, maxPanelItems)
 		if start > 0 {
 			b.WriteString(muted.Render(fmt.Sprintf("  ↑ %d more", start)))
 			b.WriteString("\n")
 		}
 		for i := start; i < end; i++ {
-			retro := m.history.Completed[i]
+			retro := items[i]
 			cursor := "  "
 			if isActive && i == m.cursor {
 				cursor = "> "
@@ -546,8 +604,12 @@ func (m HomeModel) renderHistory() string {
 			if name == "" {
 				name = retro.ID
 			}
-			line := fmt.Sprintf("%s%s — %s — %d action items",
-				cursor, name, retro.CompletedAt, len(retro.ActionItems))
+			date := retro.FullState.Meta.Date
+			if date == "" {
+				date = retro.CompletedAt
+			}
+			line := fmt.Sprintf("%s%s — %s — %d actions",
+				cursor, name, date, len(retro.ActionItems))
 			if isActive && i == m.cursor {
 				b.WriteString(styles.Selected.Render(line))
 			} else {
@@ -555,8 +617,8 @@ func (m HomeModel) renderHistory() string {
 			}
 			b.WriteString("\n")
 		}
-		if end < len(m.history.Completed) {
-			b.WriteString(muted.Render(fmt.Sprintf("  ↓ %d more", len(m.history.Completed)-end)))
+		if end < len(items) {
+			b.WriteString(muted.Render(fmt.Sprintf("  ↓ %d more", len(items)-end)))
 			b.WriteString("\n")
 		}
 	}
