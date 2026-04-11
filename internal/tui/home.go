@@ -369,7 +369,7 @@ func (m HomeModel) View() string {
 	histContents := []string{retroHist, checkHist}
 	histStyles := make([]lipgloss.Style, 2)
 	for i := range histStyles {
-		style := styles.Column
+		style := styles.HistoryColumn
 		section := SectionRetroHistory + HomeSection(i)
 		if m.section == section {
 			style = style.BorderForeground(styles.Accent)
@@ -569,6 +569,7 @@ func (m HomeModel) renderActions() string {
 func (m HomeModel) renderFilteredHistory(title string, items []domain.CompletedRetro, isActive bool) string {
 	accent := lipgloss.NewStyle().Foreground(styles.Accent).Bold(true)
 	muted := lipgloss.NewStyle().Foreground(styles.Muted)
+	dim := lipgloss.NewStyle().Foreground(styles.Muted)
 
 	header := fmt.Sprintf("%s (%d)", title, len(items))
 	if isActive {
@@ -581,46 +582,90 @@ func (m HomeModel) renderFilteredHistory(title string, items []domain.CompletedR
 	b.WriteString(header)
 	b.WriteString("\n")
 
-	emptyLabel := "No sessions yet"
 	if len(items) == 0 {
-		b.WriteString(muted.Render("  " + emptyLabel))
-	} else {
-		cur := 0
-		if isActive {
-			cur = m.cursor
+		b.WriteString(muted.Render("  No sessions yet"))
+		return b.String()
+	}
+
+	cur := 0
+	if isActive {
+		cur = m.cursor
+	}
+	start, end := scrollWindow(len(items), cur, 4) // fewer items, richer display
+	if start > 0 {
+		b.WriteString(muted.Render(fmt.Sprintf("  ↑ %d more", start)))
+		b.WriteString("\n")
+	}
+	for i := start; i < end; i++ {
+		retro := items[i]
+		isCurrent := isActive && i == m.cursor
+
+		name := retro.FullState.Meta.Name
+		if name == "" {
+			name = retro.ID
 		}
-		start, end := scrollWindow(len(items), cur, maxPanelItems)
-		if start > 0 {
-			b.WriteString(muted.Render(fmt.Sprintf("  ↑ %d more", start)))
+
+		// Date formatting
+		date := retro.FullState.Meta.Date
+		if date == "" {
+			date = retro.CompletedAt
+		}
+		if len(date) > 10 {
+			date = date[:10]
+		}
+
+		// Stats line
+		participants := len(retro.FullState.Participants)
+		actionCount := len(retro.ActionItems)
+		isCheck := retro.FullState.Meta.Type == "check"
+
+		var statsLine string
+		if isCheck {
+			tmpl := protocol.GetCheckTemplate(retro.FullState.Meta.TemplateID)
+			statsLine = fmt.Sprintf("👤 %d  📋 %d questions  ✓ %d actions",
+				participants, len(tmpl.Questions), actionCount)
+		} else {
+			cards := len(retro.FullState.Cards)
+			votes := len(retro.FullState.Votes)
+			statsLine = fmt.Sprintf("👤 %d  🃏 %d  ✧ %d  ✓ %d",
+				participants, cards, votes, actionCount)
+		}
+
+		// Template info
+		var templateLine string
+		if isCheck {
+			tmpl := protocol.GetCheckTemplate(retro.FullState.Meta.TemplateID)
+			templateLine = tmpl.Name
+		} else {
+			tmpl := protocol.GetTemplate(retro.FullState.Meta.TemplateID)
+			var cols []string
+			for _, col := range tmpl.Columns {
+				cols = append(cols, col.Title)
+			}
+			templateLine = strings.Join(cols, " · ")
+		}
+
+		// Render card
+		cursor := "  "
+		if isCurrent {
+			cursor = "> "
+		}
+
+		nameRendered := name
+		if isCurrent {
+			nameRendered = accent.Render(name)
+		}
+
+		b.WriteString(fmt.Sprintf("%s%s\n", cursor, nameRendered))
+		b.WriteString(fmt.Sprintf("  %s  %s\n", dim.Render(date), dim.Render(templateLine)))
+		b.WriteString(fmt.Sprintf("  %s\n", dim.Render(statsLine)))
+		if i < end-1 {
 			b.WriteString("\n")
 		}
-		for i := start; i < end; i++ {
-			retro := items[i]
-			cursor := "  "
-			if isActive && i == m.cursor {
-				cursor = "> "
-			}
-			name := retro.FullState.Meta.Name
-			if name == "" {
-				name = retro.ID
-			}
-			date := retro.FullState.Meta.Date
-			if date == "" {
-				date = retro.CompletedAt
-			}
-			line := fmt.Sprintf("%s%s — %s — %d actions",
-				cursor, name, date, len(retro.ActionItems))
-			if isActive && i == m.cursor {
-				b.WriteString(styles.Selected.Render(line))
-			} else {
-				b.WriteString(line)
-			}
-			b.WriteString("\n")
-		}
-		if end < len(items) {
-			b.WriteString(muted.Render(fmt.Sprintf("  ↓ %d more", len(items)-end)))
-			b.WriteString("\n")
-		}
+	}
+	if end < len(items) {
+		b.WriteString(muted.Render(fmt.Sprintf("\n  ↓ %d more", len(items)-end)))
+		b.WriteString("\n")
 	}
 	return b.String()
 }

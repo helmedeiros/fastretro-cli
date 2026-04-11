@@ -52,4 +52,10 @@ var (
 		Foreground(lipgloss.Color("#1a1a2e")).
 		Padding(0, 1).
 		Bold(true)
+
+	HistoryColumn = lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(Border).
+		Padding(1).
+		Width(60)
 )
