@@ -622,12 +622,12 @@ func (m HomeModel) renderFilteredHistory(title string, items []domain.CompletedR
 		var statsLine string
 		if isCheck {
 			tmpl := protocol.GetCheckTemplate(retro.FullState.Meta.TemplateID)
-			statsLine = fmt.Sprintf("👤 %d  📋 %d questions  ✓ %d actions",
+			statsLine = fmt.Sprintf("%d participants | %d questions | %d actions",
 				participants, len(tmpl.Questions), actionCount)
 		} else {
 			cards := len(retro.FullState.Cards)
 			votes := len(retro.FullState.Votes)
-			statsLine = fmt.Sprintf("👤 %d  🃏 %d  ✧ %d  ✓ %d",
+			statsLine = fmt.Sprintf("%d participants | %d cards | %d votes | %d actions",
 				participants, cards, votes, actionCount)
 		}
 
