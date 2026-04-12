@@ -63,6 +63,16 @@ func (r *JSONTeamRepo) LoadHistory() (domain.RetroHistoryState, error) {
 	if state.Completed == nil {
 		state.Completed = []domain.CompletedRetro{}
 	}
+	// Backfill missing dates from completedAt
+	for i := range state.Completed {
+		if state.Completed[i].FullState.Meta.Date == "" && state.Completed[i].CompletedAt != "" {
+			date := state.Completed[i].CompletedAt
+			if len(date) > 10 {
+				date = date[:10]
+			}
+			state.Completed[i].FullState.Meta.Date = date
+		}
+	}
 	return state, nil
 }
 
