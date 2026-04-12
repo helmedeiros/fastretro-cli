@@ -154,7 +154,8 @@ func (m HomeModel) handleInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m HomeModel) retroHistory() []domain.CompletedRetro {
 	var result []domain.CompletedRetro
-	for _, r := range m.history.Completed {
+	for i := len(m.history.Completed) - 1; i >= 0; i-- {
+		r := m.history.Completed[i]
 		if r.FullState.Meta.Type != "check" {
 			result = append(result, r)
 		}
@@ -164,7 +165,8 @@ func (m HomeModel) retroHistory() []domain.CompletedRetro {
 
 func (m HomeModel) checkHistory() []domain.CompletedRetro {
 	var result []domain.CompletedRetro
-	for _, r := range m.history.Completed {
+	for i := len(m.history.Completed) - 1; i >= 0; i-- {
+		r := m.history.Completed[i]
 		if r.FullState.Meta.Type == "check" {
 			result = append(result, r)
 		}
