@@ -374,24 +374,23 @@ func (m HomeModel) View() string {
 			topWidth = w
 		}
 	}
-	// Each history panel adds border (2) + padding (2) = 4 chars of chrome.
-	// Two panels have 8 chars of chrome total. Subtract that from topWidth,
-	// then split the remaining content space evenly.
-	histChrome := 4 // per panel: 1 border left + 1 padding left + 1 padding right + 1 border right
-	contentWidth := topWidth - (2 * histChrome)
-	halfWidth := contentWidth / 2
-	if halfWidth < 30 {
-		halfWidth = 30
-	}
 
 	// History sections side by side
+	// Render once to measure actual single-panel chrome overhead
+	probe := styles.HistoryColumn.Width(1).Render("")
+	chrome := lipgloss.Width(probe) - 1 // total overhead per panel (border + padding)
+	panelContentWidth := (topWidth - 2*chrome) / 2
+	if panelContentWidth < 30 {
+		panelContentWidth = 30
+	}
+
 	retroHist := m.renderFilteredHistory("RETRO HISTORY", m.retroHistory(), m.section == SectionRetroHistory)
 	checkHist := m.renderFilteredHistory("CHECK HISTORY", m.checkHistory(), m.section == SectionCheckHistory)
 
 	histContents := []string{retroHist, checkHist}
 	histStyles := make([]lipgloss.Style, 2)
 	for i := range histStyles {
-		style := styles.HistoryColumn.Width(halfWidth)
+		style := styles.HistoryColumn.Width(panelContentWidth)
 		section := SectionRetroHistory + HomeSection(i)
 		if m.section == section {
 			style = style.BorderForeground(styles.Accent)
