@@ -366,7 +366,7 @@ func (m HomeModel) View() string {
 	b.WriteString(topRow)
 	b.WriteString("\n\n")
 
-	// Measure top row width to match bottom row
+	// Measure top row rendered width to match bottom row
 	topWidth := 0
 	for _, line := range strings.Split(topRow, "\n") {
 		w := lipgloss.Width(line)
@@ -374,9 +374,14 @@ func (m HomeModel) View() string {
 			topWidth = w
 		}
 	}
-	halfWidth := topWidth / 2
-	if halfWidth < 40 {
-		halfWidth = 40
+	// Each history panel adds border (2) + padding (2) = 4 chars of chrome.
+	// Two panels have 8 chars of chrome total. Subtract that from topWidth,
+	// then split the remaining content space evenly.
+	histChrome := 4 // per panel: 1 border left + 1 padding left + 1 padding right + 1 border right
+	contentWidth := topWidth - (2 * histChrome)
+	halfWidth := contentWidth / 2
+	if halfWidth < 30 {
+		halfWidth = 30
 	}
 
 	// History sections side by side
