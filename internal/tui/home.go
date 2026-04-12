@@ -362,8 +362,22 @@ func (m HomeModel) View() string {
 		panelStyles[i] = style
 	}
 
-	b.WriteString(joinColumnsEqualHeight(panelContents, panelStyles))
+	topRow := joinColumnsEqualHeight(panelContents, panelStyles)
+	b.WriteString(topRow)
 	b.WriteString("\n\n")
+
+	// Measure top row width to match bottom row
+	topWidth := 0
+	for _, line := range strings.Split(topRow, "\n") {
+		w := lipgloss.Width(line)
+		if w > topWidth {
+			topWidth = w
+		}
+	}
+	halfWidth := topWidth / 2
+	if halfWidth < 40 {
+		halfWidth = 40
+	}
 
 	// History sections side by side
 	retroHist := m.renderFilteredHistory("RETRO HISTORY", m.retroHistory(), m.section == SectionRetroHistory)
@@ -372,7 +386,7 @@ func (m HomeModel) View() string {
 	histContents := []string{retroHist, checkHist}
 	histStyles := make([]lipgloss.Style, 2)
 	for i := range histStyles {
-		style := styles.HistoryColumn
+		style := styles.HistoryColumn.Width(halfWidth)
 		section := SectionRetroHistory + HomeSection(i)
 		if m.section == section {
 			style = style.BorderForeground(styles.Accent)
