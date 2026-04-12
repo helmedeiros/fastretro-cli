@@ -376,10 +376,22 @@ func (m HomeModel) View() string {
 	}
 
 	// History sections side by side
-	// Render once to measure actual single-panel chrome overhead
-	probe := styles.HistoryColumn.Width(1).Render("")
-	chrome := lipgloss.Width(probe) - 1 // total overhead per panel (border + padding)
-	panelContentWidth := (topWidth - 2*chrome) / 2
+	// Use a trial render to find the exact content width needed
+	// so that 2 panels match the top row's total width.
+	trial := joinColumnsEqualHeight(
+		[]string{"", ""},
+		[]lipgloss.Style{styles.HistoryColumn.Width(1), styles.HistoryColumn.Width(1)},
+	)
+	trialWidth := 0
+	for _, line := range strings.Split(trial, "\n") {
+		w := lipgloss.Width(line)
+		if w > trialWidth {
+			trialWidth = w
+		}
+	}
+	// trialWidth is for content width 1+1=2, so total chrome = trialWidth - 2
+	totalChrome := trialWidth - 2
+	panelContentWidth := (topWidth - totalChrome) / 2
 	if panelContentWidth < 30 {
 		panelContentWidth = 30
 	}
