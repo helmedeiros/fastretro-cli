@@ -709,7 +709,11 @@ func (m HomeModel) renderFilteredHistory(title string, items []domain.CompletedR
 		}
 
 		b.WriteString(fmt.Sprintf("%s%s\n", cursor, nameRendered))
-		b.WriteString(fmt.Sprintf("  %s  %s\n", dim.Render(date), dim.Render(templateLine)))
+		if date != "" {
+			b.WriteString(fmt.Sprintf("  %s  %s\n", dim.Render(date), dim.Render(templateLine)))
+		} else {
+			b.WriteString(fmt.Sprintf("  %s\n", dim.Render(templateLine)))
+		}
 		b.WriteString(fmt.Sprintf("  %s\n", dim.Render(statsLine)))
 		if i < end-1 {
 			b.WriteString("\n")
