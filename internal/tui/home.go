@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -566,6 +567,21 @@ func (m HomeModel) renderActions() string {
 	return strings.Join(lines, "\n")
 }
 
+func formatHistoryDate(metaDate, completedAt string) string {
+	raw := metaDate
+	if raw == "" {
+		raw = completedAt
+	}
+	if len(raw) > 10 {
+		raw = raw[:10]
+	}
+	t, err := time.Parse("2006-01-02", raw)
+	if err != nil {
+		return raw
+	}
+	return t.Format("Mon, Jan 2")
+}
+
 func overallCheckScore(state protocol.RetroState, tmpl protocol.CheckTemplate) float64 {
 	if len(tmpl.Questions) == 0 || len(state.SurveyResponses) == 0 {
 		return 0
@@ -643,13 +659,7 @@ func (m HomeModel) renderFilteredHistory(title string, items []domain.CompletedR
 		}
 
 		// Date formatting
-		date := retro.FullState.Meta.Date
-		if date == "" {
-			date = retro.CompletedAt
-		}
-		if len(date) > 10 {
-			date = date[:10]
-		}
+		date := formatHistoryDate(retro.FullState.Meta.Date, retro.CompletedAt)
 
 		// Stats line
 		participants := len(retro.FullState.Participants)

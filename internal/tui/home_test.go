@@ -84,8 +84,8 @@ func TestHomeView_ShowsHistory(t *testing.T) {
 	if !strings.Contains(view, "RETRO HISTORY") {
 		t.Error("expected history section")
 	}
-	if !strings.Contains(view, "2025-09-07") {
-		t.Error("expected retro date")
+	if !strings.Contains(view, "Sun, Sep 7") {
+		t.Errorf("expected formatted retro date 'Sun, Sep 7' in view")
 	}
 }
 
