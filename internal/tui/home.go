@@ -366,35 +366,11 @@ func (m HomeModel) View() string {
 	b.WriteString(topRow)
 	b.WriteString("\n\n")
 
-	// Measure top row rendered width to match bottom row
-	topWidth := 0
-	for _, line := range strings.Split(topRow, "\n") {
-		w := lipgloss.Width(line)
-		if w > topWidth {
-			topWidth = w
-		}
-	}
-
 	// History sections side by side
-	// Use a trial render to find the exact content width needed
-	// so that 2 panels match the top row's total width.
-	trial := joinColumnsEqualHeight(
-		[]string{"", ""},
-		[]lipgloss.Style{styles.HistoryColumn.Width(1), styles.HistoryColumn.Width(1)},
-	)
-	trialWidth := 0
-	for _, line := range strings.Split(trial, "\n") {
-		w := lipgloss.Width(line)
-		if w > trialWidth {
-			trialWidth = w
-		}
-	}
-	// trialWidth is for content width 1+1=2, so total chrome = trialWidth - 2
-	totalChrome := trialWidth - 2
-	panelContentWidth := (topWidth - totalChrome) / 2
-	if panelContentWidth < 30 {
-		panelContentWidth = 30
-	}
+	// Top row uses styles.Column (Width 40) for 3 panels. To make 2 bottom
+	// panels match, each gets Width = 40 * 3 / 2 = 60. This works because
+	// both styles share the same border+padding, so the chrome scales linearly.
+	histWidth := styles.Column.GetWidth() * 3 / 2
 
 	retroHist := m.renderFilteredHistory("RETRO HISTORY", m.retroHistory(), m.section == SectionRetroHistory)
 	checkHist := m.renderFilteredHistory("CHECK HISTORY", m.checkHistory(), m.section == SectionCheckHistory)
@@ -402,7 +378,7 @@ func (m HomeModel) View() string {
 	histContents := []string{retroHist, checkHist}
 	histStyles := make([]lipgloss.Style, 2)
 	for i := range histStyles {
-		style := styles.HistoryColumn.Width(panelContentWidth)
+		style := styles.Column.Width(histWidth)
 		section := SectionRetroHistory + HomeSection(i)
 		if m.section == section {
 			style = style.BorderForeground(styles.Accent)
