@@ -654,7 +654,7 @@ func (m HomeModel) renderFilteredHistory(title string, items []domain.CompletedR
 	if isActive {
 		cur = m.cursor
 	}
-	start, end := scrollWindow(len(items), cur, 4) // fewer items, richer display
+	start, end := scrollWindow(len(items), cur, 3)
 	if start > 0 {
 		b.WriteString(muted.Render(fmt.Sprintf("  ↑ %d more", start)))
 		b.WriteString("\n")
