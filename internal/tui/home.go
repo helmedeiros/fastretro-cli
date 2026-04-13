@@ -411,7 +411,7 @@ func (m HomeModel) View() string {
 	return b.String()
 }
 
-const maxPanelItems = 8
+const maxPanelItems = 7
 
 // scrollWindow returns start/end indices for a visible window around the cursor.
 func scrollWindow(total, cursor, maxVisible int) (int, int) {
