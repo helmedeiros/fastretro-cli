@@ -367,10 +367,12 @@ func (m HomeModel) View() string {
 	b.WriteString("\n\n")
 
 	// History sections side by side
-	// Top row uses styles.Column (Width 40) for 3 panels. To make 2 bottom
-	// panels match, each gets Width = 40 * 3 / 2 = 60. This works because
-	// both styles share the same border+padding, so the chrome scales linearly.
-	histWidth := styles.Column.GetWidth() * 3 / 2
+	// Top row: 3 panels, each Width(40) + 2 border = 42 rendered → 126 total.
+	// Bottom: 2 panels need 126 total → each (126/2) - 2 border = 61 content.
+	colWidth := styles.Column.GetWidth()
+	borderWidth := 2 // lipgloss RoundedBorder: 1 left + 1 right
+	topTotal := 3 * (colWidth + borderWidth)
+	histWidth := topTotal/2 - borderWidth
 
 	retroHist := m.renderFilteredHistory("RETRO HISTORY", m.retroHistory(), m.section == SectionRetroHistory)
 	checkHist := m.renderFilteredHistory("CHECK HISTORY", m.checkHistory(), m.section == SectionCheckHistory)
