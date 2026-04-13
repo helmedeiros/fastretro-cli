@@ -378,9 +378,15 @@ func (m HomeModel) View() string {
 	checkHist := m.renderFilteredHistory("CHECK HISTORY", m.checkHistory(), m.section == SectionCheckHistory)
 
 	histContents := []string{retroHist, checkHist}
+	histBase := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(styles.Border).
+		PaddingLeft(1).
+		PaddingRight(1).
+		Width(histWidth)
 	histStyles := make([]lipgloss.Style, 2)
 	for i := range histStyles {
-		style := styles.Column.Width(histWidth)
+		style := histBase
 		section := SectionRetroHistory + HomeSection(i)
 		if m.section == section {
 			style = style.BorderForeground(styles.Accent)
