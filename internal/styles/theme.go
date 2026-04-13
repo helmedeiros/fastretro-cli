@@ -45,7 +45,7 @@ var (
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(Border).
 		Padding(1).
-		Width(40)
+		Width(52)
 
 	VoteBadge = lipgloss.NewStyle().
 		Background(Accent).
