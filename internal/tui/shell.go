@@ -26,6 +26,7 @@ const (
 	ModeTeamSelect
 	ModeSession
 	ModeViewHistory
+	ModeCheckMatrix
 )
 
 // JoinStartMsg signals the shell to show the room code input.
@@ -61,7 +62,8 @@ type ShellModel struct {
 	checkTemplateCursor int
 	retroName           string
 	retroNameInput      bool
-	historyView    Model // reused Model to render close view for completed sessions
+	historyView    Model              // reused Model to render close view for completed sessions
+	checkMatrix    CheckMatrixModel  // comparison matrix for check sessions
 	width          int
 	height         int
 }
@@ -112,6 +114,38 @@ func (m ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateSession(msg)
 	case ModeViewHistory:
 		return m.updateViewHistory(msg)
+	case ModeCheckMatrix:
+		return m.updateCheckMatrix(msg)
+	}
+	return m, nil
+}
+
+func (m ShellModel) updateCheckMatrix(msg tea.Msg) (tea.Model, tea.Cmd) {
+	updated, cmd := m.checkMatrix.Update(msg)
+	m.checkMatrix = updated.(CheckMatrixModel)
+
+	// Check for done/navigation messages by running the cmd
+	if cmd != nil {
+		resultMsg := cmd()
+		switch resultMsg.(type) {
+		case checkMatrixDoneMsg:
+			m.mode = ModeHome
+			m.home = NewHomeModel(m.registry, m.teamEntry)
+			return m, nil
+		case ViewHistoryMsg:
+			vmsg := resultMsg.(ViewHistoryMsg)
+			if vmsg.State != nil {
+				m.historyView = Model{
+					state:         vmsg.State,
+					participantID: "viewer",
+					takenIDs:      make(map[string]bool),
+					width:         m.width,
+					height:        m.height,
+				}
+				m.mode = ModeViewHistory
+			}
+			return m, nil
+		}
 	}
 	return m, nil
 }
@@ -131,6 +165,12 @@ func (m ShellModel) updateViewHistory(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m ShellModel) updateHome(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case ViewCheckMatrixMsg:
+		m.checkMatrix = NewCheckMatrixModel(m.home.history)
+		m.checkMatrix.width = m.width
+		m.checkMatrix.height = m.height
+		m.mode = ModeCheckMatrix
+		return m, nil
 	case ViewHistoryMsg:
 		if msg.State != nil {
 			m.historyView = Model{
@@ -942,6 +982,8 @@ func (m ShellModel) View() string {
 		return m.session.View()
 	case ModeViewHistory:
 		return m.historyView.viewClose() + "\n"
+	case ModeCheckMatrix:
+		return m.checkMatrix.View()
 	default:
 		return m.home.View()
 	}

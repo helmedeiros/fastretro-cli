@@ -32,6 +32,9 @@ type ViewHistoryMsg struct {
 	State *protocol.RetroState
 }
 
+// ViewCheckMatrixMsg signals the shell to display the check comparison matrix.
+type ViewCheckMatrixMsg struct{}
+
 // HomeModel is the Bubble Tea model for the dashboard home screen.
 type HomeModel struct {
 	registry  *storage.JSONRegistryRepo
@@ -116,6 +119,10 @@ func (m HomeModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.deleteAtCursor()
 	case "e":
 		m.startEdit()
+	case "v":
+		if m.section == SectionCheckHistory {
+			return m, func() tea.Msg { return ViewCheckMatrixMsg{} }
+		}
 	case "enter", " ":
 		if m.section == SectionRetroHistory || m.section == SectionCheckHistory {
 			return m.viewHistoryAtCursor()
@@ -403,7 +410,7 @@ func (m HomeModel) View() string {
 		b.WriteString(muted.Render("  [Enter] save  [Esc] cancel"))
 	} else {
 		b.WriteString("\n")
-		b.WriteString(muted.Render("[Tab] section  [a] add  [d] delete  [e] edit  [Enter] toggle done / view  [*] set me"))
+		b.WriteString(muted.Render("[Tab] section  [a] add  [d] delete  [e] edit  [Enter] toggle done / view  [v] compare  [*] set me"))
 		b.WriteString("\n")
 		b.WriteString(muted.Render("[j] join  [n] new retro  [c] new check  [t] teams  [q] quit"))
 	}
