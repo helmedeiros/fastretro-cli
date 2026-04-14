@@ -159,7 +159,7 @@ func (m Model) viewDiscuss() string {
 				fmt.Sprintf("Timer: %d:%02d", remaining/60, remaining%60)))
 			b.WriteString("\n")
 		}
-		b.WriteString(styles.StatusBar.Render("[↑↓] notes  [Tab] lane  [p/n] prev/next  [a] add note  [q] quit"))
+		b.WriteString(styles.StatusBar.Render("[j/k] notes  [h/l] lane  [n/p] item  [a] add  [q] back"))
 	}
 
 	return b.String()

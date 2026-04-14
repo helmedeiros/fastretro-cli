@@ -124,7 +124,7 @@ func TestHandleSurveyKeys_CommentMode(t *testing.T) {
 	m = result.(Model)
 
 	// Enter comment mode
-	result, _ = m.handleSurveyKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}})
+	result, _ = m.handleSurveyKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
 	m = result.(Model)
 	if !m.inputMode {
 		t.Fatal("expected input mode")

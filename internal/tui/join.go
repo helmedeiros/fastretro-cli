@@ -55,7 +55,7 @@ func (m Model) viewJoin() string {
 	if m.inputMode {
 		b.WriteString(fmt.Sprintf("  New name: %s▌", m.inputText))
 	} else {
-		b.WriteString("  [n] Add new name  [Enter] Select  [q] Quit")
+		b.WriteString("  [j/k] navigate  [Enter] select  [a] add name  [q] back")
 	}
 	b.WriteString("\n")
 
@@ -88,7 +88,7 @@ func (m Model) handleJoinKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
-	case "n":
+	case "a":
 		m.inputMode = true
 		m.inputText = ""
 	}

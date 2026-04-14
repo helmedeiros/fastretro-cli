@@ -144,7 +144,7 @@ func (m Model) viewBrainstorm() string {
 
 	board := joinColumnsEqualHeight(contents, colStyles)
 
-	help := "[↑↓] navigate  [Tab/←→] column  [a] add card  [d] delete yours  [q] quit"
+	help := "[j/k] navigate  [h/l] column  [a] add  [d] delete  [q] back"
 	if m.inputMode {
 		help = "[Enter] submit  [Esc] cancel"
 	}

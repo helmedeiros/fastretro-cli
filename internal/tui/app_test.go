@@ -391,7 +391,7 @@ func TestHandleKey_DiscussStage_InKeys(t *testing.T) {
 func TestHandleKey_ReviewStage_InKeys(t *testing.T) {
 	m := testReviewModel()
 
-	result, _ := m.handleKey(keyMsg("o"))
+	result, _ := m.handleKey(keyMsg("a"))
 	model := result.(Model)
 
 	if !model.inputMode {

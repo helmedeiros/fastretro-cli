@@ -124,7 +124,7 @@ func (m Model) viewClose() string {
 	if isCheck {
 		completeLabel = "Check"
 	}
-	b.WriteString(muted.Render(fmt.Sprintf("%s complete! [q] quit", completeLabel)))
+	b.WriteString(muted.Render(fmt.Sprintf("%s complete! [q] back", completeLabel)))
 
 	return b.String()
 }

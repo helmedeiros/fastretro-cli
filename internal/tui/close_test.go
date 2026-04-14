@@ -118,8 +118,8 @@ func TestViewClose_ShowsHelp(t *testing.T) {
 	m := testCloseModel()
 	view := m.viewClose()
 
-	if !strings.Contains(view, "quit") {
-		t.Error("expected quit hint")
+	if !strings.Contains(view, "back") {
+		t.Error("expected back hint")
 	}
 }
 

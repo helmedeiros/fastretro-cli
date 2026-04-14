@@ -116,7 +116,7 @@ func (m Model) viewVote() string {
 	}
 
 	b.WriteString("\n\n")
-	b.WriteString(muted.Render("[↑↓] navigate  [Tab/←→] column  [Enter/Space] vote  [u] unvote  [q] quit"))
+	b.WriteString(muted.Render("[j/k] navigate  [h/l] column  [Enter] vote  [u] unvote  [q] back"))
 
 	return b.String()
 }

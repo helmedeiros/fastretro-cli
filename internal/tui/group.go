@@ -142,7 +142,7 @@ func (m Model) viewGroup() string {
 	} else if m.mergeSource != "" {
 		help = "MERGE: select target, press [m] to merge  [Esc] cancel"
 	} else {
-		help = "[↑↓] navigate  [←→/Tab] column  [m] merge  [u] ungroup  [r] rename  [q] quit"
+		help = "[j/k] navigate  [h/l] column  [m] merge  [u] ungroup  [e] rename  [q] back"
 	}
 
 	return board + "\n\n" + styles.StatusBar.Render(help)
@@ -199,7 +199,7 @@ func (m Model) handleGroupKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.ungroupCardByID(item.cardID)
 			}
 		}
-	case "r":
+	case "e":
 		if m.cursor < len(items) {
 			item := items[m.cursor]
 			if item.kind == "group-header" {

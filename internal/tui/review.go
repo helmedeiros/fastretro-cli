@@ -123,7 +123,7 @@ func (m Model) viewReview() string {
 	// Help
 	if !m.inputMode {
 		b.WriteString("\n")
-		b.WriteString(muted.Render("[↑↓] navigate  [o] assign owner  [q] quit"))
+		b.WriteString(muted.Render("[j/k] navigate  [a] assign owner  [q] back"))
 	}
 
 	return b.String()
@@ -145,7 +145,7 @@ func (m Model) handleReviewKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.cursor < len(actions)-1 {
 			m.cursor++
 		}
-	case "o":
+	case "a":
 		if m.cursor < len(actions) {
 			m.inputMode = true
 			m.inputText = ""

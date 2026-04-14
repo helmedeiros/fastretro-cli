@@ -113,8 +113,8 @@ func TestViewDiscuss_ShowsHelp(t *testing.T) {
 	m := testDiscussModel()
 	view := m.viewDiscuss()
 
-	if !strings.Contains(view, "prev/next") {
-		t.Error("expected prev/next hint")
+	if !strings.Contains(view, "[n/p] item") {
+		t.Error("expected n/p item hint")
 	}
 	if !strings.Contains(view, "lane") {
 		t.Error("expected lane hint")

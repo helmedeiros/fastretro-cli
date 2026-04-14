@@ -192,7 +192,7 @@ func TestHandleReviewKeys_DownAtBottom(t *testing.T) {
 func TestHandleReviewKeys_AssignOwner(t *testing.T) {
 	m := testReviewModel()
 
-	result, _ := m.handleReviewKeys(keyMsg("o"))
+	result, _ := m.handleReviewKeys(keyMsg("a"))
 	model := result.(Model)
 
 	if !model.inputMode {
@@ -368,7 +368,7 @@ func TestViewReview_InAppView(t *testing.T) {
 
 func TestHandleKey_ReviewStage(t *testing.T) {
 	m := testReviewModel()
-	result, _ := m.handleKey(keyMsg("o"))
+	result, _ := m.handleKey(keyMsg("a"))
 	model := result.(Model)
 	if !model.inputMode {
 		t.Error("expected review key handler")

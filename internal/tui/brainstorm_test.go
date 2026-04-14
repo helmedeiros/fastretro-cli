@@ -125,8 +125,8 @@ func TestViewBrainstorm_ShowsHelp(t *testing.T) {
 	if !strings.Contains(view, "delete") {
 		t.Error("expected delete hint")
 	}
-	if !strings.Contains(view, "add card") {
-		t.Error("expected add card hint")
+	if !strings.Contains(view, "[a] add") {
+		t.Error("expected add hint")
 	}
 }
 

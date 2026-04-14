@@ -139,7 +139,7 @@ func TestHandleJoinKeys_EnterSkipsTaken(t *testing.T) {
 func TestHandleJoinKeys_NToInputMode(t *testing.T) {
 	m := testModelWithState()
 
-	result, _ := m.handleJoinKeys(keyMsg("n"))
+	result, _ := m.handleJoinKeys(keyMsg("a"))
 	model := result.(Model)
 
 	if !model.inputMode {

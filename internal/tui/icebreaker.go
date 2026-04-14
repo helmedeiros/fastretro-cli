@@ -68,7 +68,7 @@ func (m Model) viewIcebreaker() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(muted.Render("[s] spin question  [n] next person  [p] prev person"))
+	b.WriteString(muted.Render("[Enter/s] spin  [n/p] next/prev  [q] back"))
 
 	return b.String()
 }
@@ -81,7 +81,7 @@ func (m Model) handleIcebreakerKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	ib := m.state.Icebreaker
 
 	switch msg.String() {
-	case "s":
+	case "s", "enter":
 		// Spin: pick a random question
 		if len(ib.Questions) > 0 {
 			m.state.Icebreaker.Question = ib.Questions[rand.Intn(len(ib.Questions))]

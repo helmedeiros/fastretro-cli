@@ -186,7 +186,7 @@ func (m ShellModel) updateHome(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		if !m.home.inputMode {
 			switch msg.String() {
-			case "j":
+			case "J":
 				m.mode = ModeJoinInput
 				m.joinInput = ""
 				m.joinErr = ""
@@ -694,11 +694,11 @@ func (m ShellModel) updateTeamSelect(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.teamCursor < len(m.teamEntries) {
 				return m.selectTeam(m.teamEntries[m.teamCursor])
 			}
-		case "c":
+		case "a":
 			m.teamInputMode = true
 			m.teamAction = "create"
 			m.teamInput = ""
-		case "r":
+		case "e":
 			if m.teamCursor < len(m.teamEntries) {
 				m.teamInputMode = true
 				m.teamAction = "rename"
@@ -790,7 +790,7 @@ func (m ShellModel) viewTeamSelect() string {
 	s += muted.Render(strings.Repeat("─", 40)) + "\n\n"
 
 	if len(m.teamEntries) == 0 {
-		s += muted.Render("  No teams yet. Press [c] to create one.") + "\n"
+		s += muted.Render("  No teams yet. Press [a] to create one.") + "\n"
 	}
 	for i, entry := range m.teamEntries {
 		cursor := "  "
@@ -815,7 +815,7 @@ func (m ShellModel) viewTeamSelect() string {
 		s += fmt.Sprintf("  %s: %s▌\n", label, m.teamInput)
 		s += muted.Render("  [Enter] save  [Esc] cancel") + "\n"
 	} else {
-		s += muted.Render("[↑↓] navigate  [Enter] select  [c] create  [d] delete  [r] rename  [Esc] back") + "\n"
+		s += muted.Render("[j/k] navigate  [Enter] select  [a] create  [d] delete  [e] rename  [Esc] back") + "\n"
 	}
 
 	return s

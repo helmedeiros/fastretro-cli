@@ -120,9 +120,7 @@ func (m HomeModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "e":
 		m.startEdit()
 	case "v":
-		if m.section == SectionCheckHistory {
-			return m, func() tea.Msg { return ViewCheckMatrixMsg{} }
-		}
+		return m, func() tea.Msg { return ViewCheckMatrixMsg{} }
 	case "enter", " ":
 		if m.section == SectionRetroHistory || m.section == SectionCheckHistory {
 			return m.viewHistoryAtCursor()
@@ -410,9 +408,9 @@ func (m HomeModel) View() string {
 		b.WriteString(muted.Render("  [Enter] save  [Esc] cancel"))
 	} else {
 		b.WriteString("\n")
-		b.WriteString(muted.Render("[Tab] section  [a] add  [d] delete  [e] edit  [Enter] toggle done / view  [v] compare  [*] set me"))
+		b.WriteString(muted.Render("[Tab] section  [a] add  [d] del  [e] edit  [Enter] select  [v] compare  [*] me"))
 		b.WriteString("\n")
-		b.WriteString(muted.Render("[j] join  [n] new retro  [c] new check  [t] teams  [q] quit"))
+		b.WriteString(muted.Render("[J] join  [n] retro  [c] check  [t] teams  [q] quit"))
 	}
 
 	return b.String()

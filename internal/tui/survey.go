@@ -70,7 +70,7 @@ func (m Model) viewSurvey() string {
 	answered := m.surveyAnsweredCount()
 	total := len(tmpl.Questions)
 	b.WriteString(styles.StatusBar.Render(
-		fmt.Sprintf("%d/%d answered  [↑↓] navigate  [1-%d] rate  [c] comment  [q] quit",
+		fmt.Sprintf("%d/%d answered  [j/k] navigate  [1-%d] rate  [e] comment  [q] back",
 			answered, total, len(tmpl.Questions[0].Options))))
 
 	return b.String()
@@ -125,7 +125,7 @@ func (m Model) handleSurveyKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.cursor < len(tmpl.Questions)-1 {
 			m.cursor++
 		}
-	case "c":
+	case "e":
 		m.inputMode = true
 		m.inputText = ""
 		existing := m.surveyResponseFor(tmpl.Questions[m.cursor].ID)

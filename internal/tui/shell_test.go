@@ -35,7 +35,7 @@ func TestShell_StartsInHomeMode(t *testing.T) {
 
 func TestShell_JKeyOpensJoinInput(t *testing.T) {
 	m := testShellModel(t)
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("J")})
 	shell := result.(ShellModel)
 	if shell.mode != ModeJoinInput {
 		t.Errorf("expected ModeJoinInput, got %d", shell.mode)
@@ -233,10 +233,10 @@ func TestShell_JKeyIgnoredDuringHomeInput(t *testing.T) {
 	m := testShellModel(t)
 	m.home.inputMode = true // simulate add-member input
 
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("J")})
 	shell := result.(ShellModel)
 	if shell.mode != ModeHome {
-		t.Error("j during input should not trigger join")
+		t.Error("J during input should not trigger join")
 	}
 }
 
@@ -479,8 +479,8 @@ func TestShell_TeamSelect_Create(t *testing.T) {
 	m.mode = ModeTeamSelect
 	m.teamEntries = []domain.TeamEntry{}
 
-	// Press c
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("c")})
+	// Press a
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("a")})
 	shell := result.(ShellModel)
 	if !shell.teamInputMode || shell.teamAction != "create" {
 		t.Error("expected create input mode")
@@ -525,8 +525,8 @@ func TestShell_TeamSelect_Rename(t *testing.T) {
 	m.teamEntries = []domain.TeamEntry{{ID: "t1", Name: "Old Name"}}
 	m.teamCursor = 0
 
-	// Press r
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("r")})
+	// Press e
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("e")})
 	shell := result.(ShellModel)
 	if !shell.teamInputMode || shell.teamAction != "rename" {
 		t.Error("expected rename input mode")

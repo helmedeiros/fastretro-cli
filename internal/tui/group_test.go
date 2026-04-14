@@ -359,7 +359,7 @@ func TestHandleGroupKeys_Rename(t *testing.T) {
 	m := testGroupModel()
 	m.cursor = 0 // header
 
-	result, _ := m.handleGroupKeys(keyMsg("r"))
+	result, _ := m.handleGroupKeys(keyMsg("e"))
 	model := result.(Model)
 
 	if !model.inputMode {
@@ -371,7 +371,7 @@ func TestHandleGroupKeys_RenameOnCard(t *testing.T) {
 	m := testGroupModel()
 	m.cursor = 1 // card
 
-	result, _ := m.handleGroupKeys(keyMsg("r"))
+	result, _ := m.handleGroupKeys(keyMsg("e"))
 	model := result.(Model)
 
 	if model.inputMode {
