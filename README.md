@@ -1,6 +1,6 @@
 # fastretro-cli
 
-A standalone terminal tool for sprint retrospectives. Manage teams, track action items, run retros locally, or join remote [fastRetro](https://github.com/helmedeiros/fastRetro) sessions — all without leaving your terminal.
+A standalone terminal tool for sprint retrospectives and team health checks. Manage teams, track action items, run retros and checks locally, or join remote [fastRetro](https://github.com/helmedeiros/fastRetro) sessions — all without leaving your terminal.
 
 Built with [Bubble Tea](https://github.com/charmbracelet/bubbletea) and [Lip Gloss](https://github.com/charmbracelet/lipgloss).
 
@@ -38,9 +38,12 @@ Running `fastretro` with no arguments launches the team dashboard.
 | `a`       | Add item (member/agreement/action) |
 | `d`       | Delete selected item          |
 | `e`       | Edit selected item            |
-| `Enter`   | Toggle action item done       |
-| `j`       | Join a remote retro session   |
+| `Enter`   | Toggle action done / View history |
+| `v`       | Compare checks (score matrix) |
+| `*`       | Set default member (me)       |
+| `J`       | Join a remote session         |
 | `n`       | Start a new local retro       |
+| `c`       | Start a new check             |
 | `t`       | Open team selector            |
 | `q`       | Quit                          |
 
@@ -56,8 +59,8 @@ Press `t` from the home screen to manage teams. Create new teams, switch between
 |-----------|-----------------|
 | `j` / `k` | Navigate teams  |
 | `Enter`   | Select team     |
-| `c`       | Create new team |
-| `r`       | Rename team     |
+| `a`       | Create new team |
+| `e`       | Rename team     |
 | `d`       | Delete team     |
 | `Esc`     | Back to home    |
 
@@ -74,11 +77,11 @@ Each team has its own members, agreements, action items, and retro history store
 
 ## Retro Stages
 
-Every retro follows the same flow. The stage bar at the top always shows where you are:
+Every session follows a stage flow. The stage bar at the top always shows where you are:
 
-```
-ICEBREAKER  BRAINSTORM  GROUP  VOTE  DISCUSS  REVIEW  CLOSE
-```
+**Retrospective:** `ICEBREAKER  BRAINSTORM  GROUP  VOTE  DISCUSS  REVIEW  CLOSE`
+
+**Check:** `ICEBREAKER  SURVEY  DISCUSS  REVIEW  CLOSE`
 
 ---
 
@@ -92,8 +95,8 @@ Pick your identity from the participant list or add a new name.
 |-----------|-----------------------|
 | `j` / `k` | Navigate participants |
 | `Enter`   | Select identity       |
-| `n`       | Add new name          |
-| `q`       | Quit                  |
+| `a`       | Add new name          |
+| `q`       | Back                  |
 
 ---
 
@@ -124,7 +127,7 @@ Add cards to columns. Navigate between columns with `Tab`. Each column shows its
 
 ### Group
 
-Merge related cards into clusters. Select a card, press `m`, navigate to the target, press `m` again. Rename groups with `r`, ungroup with `u`.
+Merge related cards into clusters. Select a card, press `m`, navigate to the target, press `m` again. Rename groups with `e`, ungroup with `u`.
 
 ![Group](docs/screenshots/04-group.png)
 
@@ -133,7 +136,7 @@ Merge related cards into clusters. Select a card, press `m`, navigate to the tar
 | `j` / `k`        | Navigate items     |
 | `Tab` / `l` / `h` | Switch column     |
 | `m`              | Merge (two-step)   |
-| `r`              | Rename group       |
+| `e`              | Rename group       |
 | `u`              | Ungroup card       |
 | `Esc`            | Cancel merge       |
 
@@ -154,9 +157,21 @@ Cast votes on cards and groups within your budget. Vote counts and your own vote
 
 ---
 
+### Survey (Checks only)
+
+Rate each question from the check template. Scores are used to calculate medians for the discuss stage.
+
+| Key              | Action            |
+|------------------|-------------------|
+| `j` / `k`        | Navigate questions |
+| `1`-`9`          | Rate question     |
+| `e`              | Add/edit comment  |
+
+---
+
 ### Discuss
 
-Walk through items in the discussion carousel. View context and action notes side by side. Navigate between items with `p`/`n`, switch lanes with `Tab`, and add notes with `a`.
+Walk through items in the discussion carousel. For retros, items are ordered by vote count. For checks, items are questions ordered by median score (worst first). View context and action notes side by side. Navigate between items with `p`/`n`, switch lanes with `Tab`, and add notes with `a`.
 
 ![Discuss](docs/screenshots/06-discuss.png)
 
@@ -178,7 +193,7 @@ Browse action items and assign owners. The board overview shows all columns side
 | Key       | Action          |
 |-----------|-----------------|
 | `j` / `k` | Navigate items  |
-| `o`       | Assign owner    |
+| `a`       | Assign owner    |
 
 ---
 
@@ -201,17 +216,35 @@ The CLI supports all 6 facilitation templates, each with proper column titles an
 | KALM             | Keep, Add, Less, More                      |
 | Starfish         | Start, More of, Continue, Less of, Stop    |
 
+## Check Comparison Matrix
+
+Press `v` from the home screen to open the check comparison view. See scores across sessions side by side, color-coded by performance.
+
+| Key       | Action              |
+|-----------|---------------------|
+| `h` / `l` | Select session      |
+| `Tab`     | Switch template     |
+| `Enter`   | View session detail |
+| `q`       | Back to home        |
+
+## Supported check templates
+
+| Template           | Questions | Scale  |
+|--------------------|-----------|--------|
+| Health Check       | 9         | 1-5 numeric |
+| DORA Metrics Quiz  | 5         | Labeled options |
+
 ## How it works
 
 ### Standalone mode
 
-Press `n` from the home screen to start a retro locally. Pick a template, name your retro, and go. Team members are pre-loaded as participants. When the retro ends, action items are saved to the team's history.
+Press `n` from the home screen to start a retro, or `c` to start a check. Pick a template, name your session, and go. Team members are pre-loaded as participants. When the retro ends, action items are saved to the team's history.
 
 ![New retro template picker](docs/screenshots/11-new-retro.png)
 
 ### Remote mode
 
-Press `j` to join a remote session hosted by the [fastRetro web app](https://github.com/helmedeiros/fastRetro). Paste the room code or URL and connect. Changes sync in real time. When you leave, participants are automatically added to your team and action items are saved.
+Press `J` to join a remote session hosted by the [fastRetro web app](https://github.com/helmedeiros/fastRetro). Paste the room code or URL and connect. Changes sync in real time. When you leave, participants are automatically added to your team and action items are saved.
 
 ![Join retro](docs/screenshots/10-join.png)
 
