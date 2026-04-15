@@ -178,11 +178,10 @@ func (m CheckMatrixModel) View() string {
 	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, tabs...))
 	b.WriteString("\n\n")
 
-	b.WriteString(muted.Render("[h/l] select  [Tab] template  [Enter] view  [q] back"))
-	b.WriteString("\n\n")
-
 	if len(sessions) == 0 {
 		b.WriteString(muted.Render("  No completed sessions for this template."))
+		b.WriteString("\n\n")
+		b.WriteString(muted.Render("[Tab] template  [q] back"))
 		return b.String()
 	}
 
@@ -283,6 +282,8 @@ func (m CheckMatrixModel) View() string {
 		overallRow += scoreStyle(overall, maxLevel).Render(cellText)
 	}
 	b.WriteString(overallRow)
+	b.WriteString("\n\n")
+	b.WriteString(muted.Render("[h/l] select  [Tab] template  [Enter] view  [q] back"))
 	b.WriteString("\n")
 
 	return b.String()
