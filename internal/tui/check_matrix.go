@@ -127,7 +127,6 @@ func scoreStyle(score float64, maxLevel int) lipgloss.Style {
 func (m CheckMatrixModel) View() string {
 	accent := lipgloss.NewStyle().Foreground(styles.Accent).Bold(true)
 	muted := lipgloss.NewStyle().Foreground(styles.Muted)
-	bold := lipgloss.NewStyle().Bold(true)
 
 	tmpl := m.templates[m.tmplCursor]
 	sessions := m.sessions()
@@ -144,11 +143,41 @@ func (m CheckMatrixModel) View() string {
 
 	// Title
 	b.WriteString(accent.Render("Check Comparison"))
-	b.WriteString("  ")
-	b.WriteString(bold.Render(tmpl.Name))
-	b.WriteString("  ")
-	b.WriteString(muted.Render(fmt.Sprintf("(%d sessions)", len(sessions))))
-	b.WriteString("\n")
+	b.WriteString("\n\n")
+
+	// Template tabs
+	activeTab := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(styles.Accent).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(styles.Accent).
+		Padding(0, 2)
+	inactiveTab := lipgloss.NewStyle().
+		Foreground(styles.Muted).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(styles.Border).
+		Padding(0, 2)
+
+	var tabs []string
+	for i, t := range m.templates {
+		// Count sessions for this template
+		count := 0
+		for j := len(m.history.Completed) - 1; j >= 0; j-- {
+			r := m.history.Completed[j]
+			if r.FullState.Meta.Type == "check" && r.FullState.Meta.TemplateID == t.ID {
+				count++
+			}
+		}
+		label := fmt.Sprintf("%s (%d)", t.Name, count)
+		if i == m.tmplCursor {
+			tabs = append(tabs, activeTab.Render(label))
+		} else {
+			tabs = append(tabs, inactiveTab.Render(label))
+		}
+	}
+	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, tabs...))
+	b.WriteString("\n\n")
+
 	b.WriteString(muted.Render("[h/l] select  [Tab] template  [Enter] view  [q] back"))
 	b.WriteString("\n\n")
 
