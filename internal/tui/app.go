@@ -339,7 +339,6 @@ func (m Model) View() string {
 // with equal height, then joins them horizontally.
 func joinColumnsEqualHeight(contents []string, colStyles []lipgloss.Style) string {
 	// First render to measure heights
-	var rendered []string
 	maxH := 0
 	for i, content := range contents {
 		r := colStyles[i].Render(content)
@@ -347,10 +346,9 @@ func joinColumnsEqualHeight(contents []string, colStyles []lipgloss.Style) strin
 		if h > maxH {
 			maxH = h
 		}
-		rendered = append(rendered, r)
 	}
 	// Re-render with equal height
-	rendered = nil
+	var rendered []string
 	for i, content := range contents {
 		r := colStyles[i].Height(maxH).Render(content)
 		rendered = append(rendered, r)

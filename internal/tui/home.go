@@ -25,8 +25,6 @@ const (
 	sectionCount
 )
 
-var sectionNames = []string{"MEMBERS", "AGREEMENTS", "ACTION ITEMS", "RETRO HISTORY", "CHECK HISTORY"}
-
 // ViewHistoryMsg signals the shell to display a completed session's close view.
 type ViewHistoryMsg struct {
 	State *protocol.RetroState
@@ -37,20 +35,19 @@ type ViewCheckMatrixMsg struct{}
 
 // HomeModel is the Bubble Tea model for the dashboard home screen.
 type HomeModel struct {
-	registry  *storage.JSONRegistryRepo
-	repo      *storage.JSONTeamRepo
-	teamEntry domain.TeamEntry
-	team      domain.TeamState
-	history   domain.RetroHistoryState
-	section   HomeSection
-	cursor    int
-	inputMode bool
-	inputText string
+	registry    *storage.JSONRegistryRepo
+	repo        *storage.JSONTeamRepo
+	teamEntry   domain.TeamEntry
+	team        domain.TeamState
+	history     domain.RetroHistoryState
+	section     HomeSection
+	cursor      int
+	inputMode   bool
+	inputText   string
 	inputAction string // "add-member", "add-agreement", "add-action", "edit-agreement", "reassign", "edit-action"
-	editID    string   // ID of item being edited
-	width     int
-	height    int
-	err       error
+	editID      string // ID of item being edited
+	width       int
+	height      int
 }
 
 // NewHomeModel creates a home screen model for the given team.

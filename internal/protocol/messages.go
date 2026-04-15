@@ -6,8 +6,8 @@ import "encoding/json"
 
 // SyncTeamInfo carries team metadata over WebSocket.
 type SyncTeamInfo struct {
-	TeamName   string            `json:"teamName"`
-	Members    []TeamInfoMember  `json:"members"`
+	TeamName   string              `json:"teamName"`
+	Members    []TeamInfoMember    `json:"members"`
 	Agreements []TeamInfoAgreement `json:"agreements"`
 }
 
@@ -25,14 +25,14 @@ type TeamInfoAgreement struct {
 
 // IncomingMessage represents a message received from the server.
 type IncomingMessage struct {
-	Type     string         `json:"type"`
-	State    *RetroState    `json:"state,omitempty"`
-	Stage    string         `json:"stage,omitempty"`
-	Count    int            `json:"count,omitempty"`
-	Total    int            `json:"total,omitempty"`
-	IDs      []string       `json:"ids,omitempty"`
-	PID      string         `json:"participantId,omitempty"`
-	TeamInfo *SyncTeamInfo  `json:"teamInfo,omitempty"`
+	Type     string        `json:"type"`
+	State    *RetroState   `json:"state,omitempty"`
+	Stage    string        `json:"stage,omitempty"`
+	Count    int           `json:"count,omitempty"`
+	Total    int           `json:"total,omitempty"`
+	IDs      []string      `json:"ids,omitempty"`
+	PID      string        `json:"participantId,omitempty"`
+	TeamInfo *SyncTeamInfo `json:"teamInfo,omitempty"`
 }
 
 // ParseMessage parses a raw JSON message from the WebSocket.

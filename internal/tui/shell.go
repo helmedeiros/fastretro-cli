@@ -45,27 +45,27 @@ type SessionDoneMsg struct {
 
 // ShellModel is the top-level model that switches between home and session.
 type ShellModel struct {
-	mode      ShellMode
-	home      HomeModel
-	session   Model
-	registry  *storage.JSONRegistryRepo
-	teamEntry domain.TeamEntry
-	serverURL string
-	joinInput      string
-	joinErr        string
-	teamEntries    []domain.TeamEntry
-	teamCursor     int
-	teamInput      string
-	teamInputMode  bool
-	teamAction     string // "create", "rename"
+	mode                ShellMode
+	home                HomeModel
+	session             Model
+	registry            *storage.JSONRegistryRepo
+	teamEntry           domain.TeamEntry
+	serverURL           string
+	joinInput           string
+	joinErr             string
+	teamEntries         []domain.TeamEntry
+	teamCursor          int
+	teamInput           string
+	teamInputMode       bool
+	teamAction          string // "create", "rename"
 	templateCursor      int
 	checkTemplateCursor int
 	retroName           string
 	retroNameInput      bool
-	historyView    Model              // reused Model to render close view for completed sessions
-	checkMatrix    CheckMatrixModel  // comparison matrix for check sessions
-	width          int
-	height         int
+	historyView         Model            // reused Model to render close view for completed sessions
+	checkMatrix         CheckMatrixModel // comparison matrix for check sessions
+	width               int
+	height              int
 }
 
 // NewShellModel creates the shell with a home screen.
@@ -127,13 +127,12 @@ func (m ShellModel) updateCheckMatrix(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Check for done/navigation messages by running the cmd
 	if cmd != nil {
 		resultMsg := cmd()
-		switch resultMsg.(type) {
+		switch vmsg := resultMsg.(type) {
 		case checkMatrixDoneMsg:
 			m.mode = ModeHome
 			m.home = NewHomeModel(m.registry, m.teamEntry)
 			return m, nil
 		case ViewHistoryMsg:
-			vmsg := resultMsg.(ViewHistoryMsg)
 			if vmsg.State != nil {
 				m.historyView = Model{
 					state:         vmsg.State,

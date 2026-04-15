@@ -644,8 +644,8 @@ func TestShell_SaveSession_WithTeamInfo_CreatesTeam(t *testing.T) {
 		},
 	}
 	m.session.teamInfo = &protocol.SyncTeamInfo{
-		TeamName: "Remote Squad",
-		Members:  []protocol.TeamInfoMember{{ID: "m1", Name: "Alice"}, {ID: "m2", Name: "Dave"}},
+		TeamName:   "Remote Squad",
+		Members:    []protocol.TeamInfoMember{{ID: "m1", Name: "Alice"}, {ID: "m2", Name: "Dave"}},
 		Agreements: []protocol.TeamInfoAgreement{{ID: "a1", Text: "Ship daily"}},
 	}
 

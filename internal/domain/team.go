@@ -25,9 +25,9 @@ type TeamState struct {
 }
 
 var (
-	ErrEmptyName      = errors.New("name must not be empty")
-	ErrDuplicateName  = errors.New("name already exists")
-	ErrMemberNotFound = errors.New("member not found")
+	ErrEmptyName         = errors.New("name must not be empty")
+	ErrDuplicateName     = errors.New("name already exists")
+	ErrMemberNotFound    = errors.New("member not found")
 	ErrAgreementNotFound = errors.New("agreement not found")
 )
 

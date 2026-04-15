@@ -168,7 +168,7 @@ func (m Model) viewDiscuss() string {
 func (m Model) renderNoteLane(title string, notes []noteEntry, active bool) string {
 	var lines []string
 
-	header := title
+	var header string
 	if active {
 		header = styles.Selected.Render(title)
 	} else {

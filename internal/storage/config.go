@@ -119,7 +119,7 @@ func (r *JSONRegistryRepo) SaveDefaultMember(name string) error {
 	path := filepath.Join(r.baseDir, "config.json")
 	var cfg configFile
 	if data, err := os.ReadFile(path); err == nil {
-		json.Unmarshal(data, &cfg)
+		_ = json.Unmarshal(data, &cfg)
 	}
 	cfg.DefaultMember = name
 	if err := os.MkdirAll(r.baseDir, 0755); err != nil {

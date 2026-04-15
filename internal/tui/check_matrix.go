@@ -197,13 +197,6 @@ func (m CheckMatrixModel) View() string {
 		if len(name) > cellWidth-1 {
 			name = name[:cellWidth-2] + ".."
 		}
-		date := s.FullState.Meta.Date
-		if date == "" {
-			date = s.CompletedAt
-		}
-		if len(date) > 10 {
-			date = date[:10]
-		}
 
 		colStyle := lipgloss.NewStyle().Width(cellWidth).Align(lipgloss.Center)
 		if i == m.colCursor {

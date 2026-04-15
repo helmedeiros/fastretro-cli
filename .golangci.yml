@@ -1,0 +1,43 @@
+run:
+  timeout: 3m
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - gosimple
+    - ineffassign
+    - typecheck
+    - misspell
+    - revive
+    - gofmt
+    - goimports
+
+linters-settings:
+  revive:
+    rules:
+      - name: exported
+        disabled: true
+  misspell:
+    locale: US
+
+issues:
+  exclude-use-default: true
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+    # TUI fire-and-forget: WebSocket sends, file saves, clipboard ops
+    # in Bubble Tea models where we can't propagate errors
+    - path: internal/tui/
+      linters:
+        - errcheck
+      text: "ClaimIdentity|SendState|Send|SaveTeam|SaveHistory|Save|SetSelectedTeamID|RequestState"
+    - path: cmd/
+      linters:
+        - errcheck
+      text: "SetSelectedTeamID"

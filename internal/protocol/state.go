@@ -2,19 +2,19 @@ package protocol
 
 // RetroState represents the full state of a retrospective session.
 type RetroState struct {
-	Stage          string         `json:"stage"`
-	Meta           RetroMeta      `json:"meta"`
-	Participants   []Participant  `json:"participants"`
-	Timer          *Timer         `json:"timer"`
-	Icebreaker     *Icebreaker    `json:"icebreaker"`
-	Cards          []Card         `json:"cards"`
-	Groups         []Group        `json:"groups"`
-	Votes          []Vote         `json:"votes"`
-	VoteBudget     int            `json:"voteBudget"`
-	Discuss        *DiscussState  `json:"discuss"`
-	DiscussNotes   []DiscussNote  `json:"discussNotes"`
-	ActionOwners    map[string]string  `json:"actionItemOwners"`
-	SurveyResponses []SurveyResponse   `json:"surveyResponses"`
+	Stage           string            `json:"stage"`
+	Meta            RetroMeta         `json:"meta"`
+	Participants    []Participant     `json:"participants"`
+	Timer           *Timer            `json:"timer"`
+	Icebreaker      *Icebreaker       `json:"icebreaker"`
+	Cards           []Card            `json:"cards"`
+	Groups          []Group           `json:"groups"`
+	Votes           []Vote            `json:"votes"`
+	VoteBudget      int               `json:"voteBudget"`
+	Discuss         *DiscussState     `json:"discuss"`
+	DiscussNotes    []DiscussNote     `json:"discussNotes"`
+	ActionOwners    map[string]string `json:"actionItemOwners"`
+	SurveyResponses []SurveyResponse  `json:"surveyResponses"`
 }
 
 // SurveyResponse represents a participant's rating for a check question.
