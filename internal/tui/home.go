@@ -364,9 +364,9 @@ func (m HomeModel) View() string {
 		topHeight = h
 	}
 
-	membersBox := titledBox(fmt.Sprintf("MEMBERS (%d)", len(m.team.Members)), membersContent, colWidth, topHeight, m.section == SectionMembers)
-	agreementsBox := titledBox(fmt.Sprintf("AGREEMENTS (%d)", len(m.team.Agreements)), agreementsContent, colWidth, topHeight, m.section == SectionAgreements)
-	actionsBox := titledBox(fmt.Sprintf("ACTIONS (%d)", len(domain.GetAllActionItems(m.history))), actionsContent, colWidth, topHeight, m.section == SectionActions)
+	membersBox := titledBox("MEMBERS", membersContent, fmt.Sprintf("%d total", len(m.team.Members)), colWidth, topHeight, m.section == SectionMembers)
+	agreementsBox := titledBox("AGREEMENTS", agreementsContent, fmt.Sprintf("%d total", len(m.team.Agreements)), colWidth, topHeight, m.section == SectionAgreements)
+	actionsBox := titledBox("ACTIONS", actionsContent, fmt.Sprintf("%d total", len(domain.GetAllActionItems(m.history))), colWidth, topHeight, m.section == SectionActions)
 
 	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, membersBox, agreementsBox, actionsBox))
 	b.WriteString("\n\n")
@@ -381,8 +381,8 @@ func (m HomeModel) View() string {
 		histHeight = h
 	}
 
-	retroBox := titledBox(fmt.Sprintf("RETRO HISTORY (%d)", len(m.retroHistory())), retroContent, histWidth, histHeight, m.section == SectionRetroHistory)
-	checkBox := titledBox(fmt.Sprintf("CHECK HISTORY (%d)", len(m.checkHistory())), checkContent, histWidth, histHeight, m.section == SectionCheckHistory)
+	retroBox := titledBox("RETRO HISTORY", retroContent, fmt.Sprintf("%d total", len(m.retroHistory())), histWidth, histHeight, m.section == SectionRetroHistory)
+	checkBox := titledBox("CHECK HISTORY", checkContent, fmt.Sprintf("%d total", len(m.checkHistory())), histWidth, histHeight, m.section == SectionCheckHistory)
 
 	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, retroBox, checkBox))
 	b.WriteString("\n")
@@ -402,10 +402,13 @@ func (m HomeModel) View() string {
 	return b.String()
 }
 
-// titledBox renders content inside a bordered box with a title embedded in the
-// top border line, e.g.: ╭─ TITLE ──────────╮
-// If minHeight > 0, empty lines are added to reach that content height.
-func titledBox(title, content string, width, minHeight int, active bool) string {
+// titledBox renders content inside a bordered box with a title in the top
+// border and an optional label in the bottom border.
+// e.g.: ╭─ TITLE ──────────╮
+//
+//	│ content           │
+//	╰─ 1 of 12 ────────╯
+func titledBox(title, content, bottomLabel string, width, minHeight int, active bool) string {
 	borderColor := styles.Border
 	if active {
 		borderColor = styles.Accent
@@ -438,8 +441,19 @@ func titledBox(title, content string, width, minHeight int, active bool) string 
 		body.WriteString(bc.Render("│") + " " + line + strings.Repeat(" ", pad-1) + bc.Render("│") + "\n")
 	}
 
-	// Bottom border
-	bottom := bc.Render("╰" + strings.Repeat("─", innerWidth) + "╯")
+	// Bottom border with optional label
+	var bottom string
+	if bottomLabel != "" {
+		labelStr := " " + bottomLabel + " "
+		labelLen := lipgloss.Width(labelStr)
+		rightDashBottom := innerWidth - 1 - labelLen
+		if rightDashBottom < 0 {
+			rightDashBottom = 0
+		}
+		bottom = bc.Render("╰─") + bottomLabel + bc.Render(strings.Repeat("─", rightDashBottom)+"╯")
+	} else {
+		bottom = bc.Render("╰" + strings.Repeat("─", innerWidth) + "╯")
+	}
 
 	return top + "\n" + body.String() + bottom
 }

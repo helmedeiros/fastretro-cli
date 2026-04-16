@@ -51,8 +51,11 @@ func TestHomeView_ShowsMembers(t *testing.T) {
 	if !strings.Contains(view, "Alice") || !strings.Contains(view, "Bob") {
 		t.Error("expected members")
 	}
-	if !strings.Contains(view, "MEMBERS (2)") {
-		t.Error("expected member count")
+	if !strings.Contains(view, "MEMBERS") {
+		t.Error("expected members title")
+	}
+	if !strings.Contains(view, "2 total") {
+		t.Error("expected member count in bottom border")
 	}
 }
 
