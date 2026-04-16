@@ -350,52 +350,27 @@ func (m HomeModel) View() string {
 	b.WriteString("\n\n")
 
 	// Panels: Members | Agreements | Action Items
-	membersPanel := m.renderMembers()
-	agreementsPanel := m.renderAgreements()
-	actionsPanel := m.renderActions()
+	colWidth := styles.Column.GetWidth() + 2 // content + border
+	membersTitle := fmt.Sprintf("MEMBERS (%d)", len(m.team.Members))
+	agreementsTitle := fmt.Sprintf("AGREEMENTS (%d)", len(m.team.Agreements))
+	actionsTitle := fmt.Sprintf("ACTIONS (%d)", len(domain.GetAllActionItems(m.history)))
 
-	panelContents := []string{membersPanel, agreementsPanel, actionsPanel}
-	panelStyles := make([]lipgloss.Style, 3)
-	for i := range panelStyles {
-		style := styles.Column
-		if int(m.section) == i {
-			style = style.BorderForeground(styles.Accent)
-		}
-		panelStyles[i] = style
-	}
+	membersBox := titledBox(membersTitle, m.renderMembers(), colWidth, m.section == SectionMembers)
+	agreementsBox := titledBox(agreementsTitle, m.renderAgreements(), colWidth, m.section == SectionAgreements)
+	actionsBox := titledBox(actionsTitle, m.renderActions(), colWidth, m.section == SectionActions)
 
-	topRow := joinColumnsEqualHeight(panelContents, panelStyles)
-	b.WriteString(topRow)
+	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, membersBox, agreementsBox, actionsBox))
 	b.WriteString("\n\n")
 
 	// History sections side by side
-	// Top row: 3 panels, each Width(40) + 2 border = 42 rendered → 126 total.
-	// Bottom: 2 panels need 126 total → each (126/2) - 2 border = 61 content.
-	colWidth := styles.Column.GetWidth()
-	borderWidth := 2 // lipgloss RoundedBorder: 1 left + 1 right
-	topTotal := 3 * (colWidth + borderWidth)
-	histWidth := topTotal/2 - borderWidth
+	histWidth := 3 * colWidth / 2
+	retroTitle := fmt.Sprintf("RETRO HISTORY (%d)", len(m.retroHistory()))
+	checkTitle := fmt.Sprintf("CHECK HISTORY (%d)", len(m.checkHistory()))
 
-	retroHist := m.renderFilteredHistory("RETRO HISTORY", m.retroHistory(), m.section == SectionRetroHistory)
-	checkHist := m.renderFilteredHistory("CHECK HISTORY", m.checkHistory(), m.section == SectionCheckHistory)
+	retroBox := titledBox(retroTitle, m.renderFilteredHistory(m.retroHistory(), m.section == SectionRetroHistory), histWidth, m.section == SectionRetroHistory)
+	checkBox := titledBox(checkTitle, m.renderFilteredHistory(m.checkHistory(), m.section == SectionCheckHistory), histWidth, m.section == SectionCheckHistory)
 
-	histContents := []string{retroHist, checkHist}
-	histBase := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(styles.Border).
-		PaddingLeft(1).
-		PaddingRight(1).
-		Width(histWidth)
-	histStyles := make([]lipgloss.Style, 2)
-	for i := range histStyles {
-		style := histBase
-		section := SectionRetroHistory + HomeSection(i)
-		if m.section == section {
-			style = style.BorderForeground(styles.Accent)
-		}
-		histStyles[i] = style
-	}
-	b.WriteString(joinColumnsEqualHeight(histContents, histStyles))
+	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, retroBox, checkBox))
 	b.WriteString("\n")
 
 	// Input or help
@@ -411,6 +386,43 @@ func (m HomeModel) View() string {
 	}
 
 	return b.String()
+}
+
+// titledBox renders content inside a bordered box with a title embedded in the
+// top border line, e.g.: ╭─ TITLE ──────────╮
+func titledBox(title, content string, width int, active bool) string {
+	borderColor := styles.Border
+	if active {
+		borderColor = styles.Accent
+	}
+	bc := lipgloss.NewStyle().Foreground(borderColor)
+
+	// Build top border with title
+	titleStr := " " + title + " "
+	titleLen := lipgloss.Width(titleStr)
+	innerWidth := width - 2                // minus left+right border chars
+	rightDash := innerWidth - 1 - titleLen // 1 for left dash
+	if rightDash < 0 {
+		rightDash = 0
+	}
+	top := bc.Render("╭─") + titleStr + bc.Render(strings.Repeat("─", rightDash)+"╮")
+
+	// Wrap content lines with side borders
+	contentLines := strings.Split(content, "\n")
+	var body strings.Builder
+	for _, line := range contentLines {
+		lineWidth := lipgloss.Width(line)
+		pad := innerWidth - lineWidth
+		if pad < 0 {
+			pad = 0
+		}
+		body.WriteString(bc.Render("│") + " " + line + strings.Repeat(" ", pad-1) + bc.Render("│") + "\n")
+	}
+
+	// Bottom border
+	bottom := bc.Render("╰" + strings.Repeat("─", innerWidth) + "╯")
+
+	return top + "\n" + body.String() + bottom
 }
 
 const maxPanelItems = 7
@@ -438,15 +450,7 @@ func (m HomeModel) renderMembers() string {
 	muted := lipgloss.NewStyle().Foreground(styles.Muted)
 	isActive := m.section == SectionMembers
 
-	header := fmt.Sprintf("MEMBERS (%d)", len(m.team.Members))
-	if isActive {
-		header = accent.Render(header)
-	} else {
-		header = muted.Render(header)
-	}
-
 	var lines []string
-	lines = append(lines, header, "")
 
 	if len(m.team.Members) == 0 {
 		lines = append(lines, muted.Render("(empty)"))
@@ -485,19 +489,10 @@ func (m HomeModel) renderMembers() string {
 }
 
 func (m HomeModel) renderAgreements() string {
-	accent := lipgloss.NewStyle().Foreground(styles.Accent).Bold(true)
 	muted := lipgloss.NewStyle().Foreground(styles.Muted)
 	isActive := m.section == SectionAgreements
 
-	header := fmt.Sprintf("AGREEMENTS (%d)", len(m.team.Agreements))
-	if isActive {
-		header = accent.Render(header)
-	} else {
-		header = muted.Render(header)
-	}
-
 	var lines []string
-	lines = append(lines, header, "")
 
 	if len(m.team.Agreements) == 0 {
 		lines = append(lines, muted.Render("(empty)"))
@@ -531,20 +526,12 @@ func (m HomeModel) renderAgreements() string {
 }
 
 func (m HomeModel) renderActions() string {
-	accent := lipgloss.NewStyle().Foreground(styles.Accent).Bold(true)
 	muted := lipgloss.NewStyle().Foreground(styles.Muted)
 	isActive := m.section == SectionActions
 
 	items := domain.GetAllActionItems(m.history)
-	header := fmt.Sprintf("ACTION ITEMS (%d)", len(items))
-	if isActive {
-		header = accent.Render(header)
-	} else {
-		header = muted.Render(header)
-	}
 
 	var lines []string
-	lines = append(lines, header, "")
 
 	if len(items) == 0 {
 		lines = append(lines, muted.Render("(empty)"))
@@ -637,21 +624,12 @@ func overallCheckScore(state protocol.RetroState, tmpl protocol.CheckTemplate) f
 	return sum / float64(count)
 }
 
-func (m HomeModel) renderFilteredHistory(title string, items []domain.CompletedRetro, isActive bool) string {
+func (m HomeModel) renderFilteredHistory(items []domain.CompletedRetro, isActive bool) string {
 	accent := lipgloss.NewStyle().Foreground(styles.Accent).Bold(true)
 	muted := lipgloss.NewStyle().Foreground(styles.Muted)
 	dim := lipgloss.NewStyle().Foreground(styles.Muted)
 
-	header := fmt.Sprintf("%s (%d)", title, len(items))
-	if isActive {
-		header = accent.Render(header)
-	} else {
-		header = muted.Render(header)
-	}
-
 	var b strings.Builder
-	b.WriteString(header)
-	b.WriteString("\n")
 
 	if len(items) == 0 {
 		b.WriteString(muted.Render("  No sessions yet"))
