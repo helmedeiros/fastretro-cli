@@ -351,24 +351,38 @@ func (m HomeModel) View() string {
 
 	// Panels: Members | Agreements | Action Items
 	colWidth := styles.Column.GetWidth() + 2 // content + border
-	membersTitle := fmt.Sprintf("MEMBERS (%d)", len(m.team.Members))
-	agreementsTitle := fmt.Sprintf("AGREEMENTS (%d)", len(m.team.Agreements))
-	actionsTitle := fmt.Sprintf("ACTIONS (%d)", len(domain.GetAllActionItems(m.history)))
+	membersContent := m.renderMembers()
+	agreementsContent := m.renderAgreements()
+	actionsContent := m.renderActions()
 
-	membersBox := titledBox(membersTitle, m.renderMembers(), colWidth, m.section == SectionMembers)
-	agreementsBox := titledBox(agreementsTitle, m.renderAgreements(), colWidth, m.section == SectionAgreements)
-	actionsBox := titledBox(actionsTitle, m.renderActions(), colWidth, m.section == SectionActions)
+	// Equal height for top row
+	topHeight := contentHeight(membersContent)
+	if h := contentHeight(agreementsContent); h > topHeight {
+		topHeight = h
+	}
+	if h := contentHeight(actionsContent); h > topHeight {
+		topHeight = h
+	}
+
+	membersBox := titledBox(fmt.Sprintf("MEMBERS (%d)", len(m.team.Members)), membersContent, colWidth, topHeight, m.section == SectionMembers)
+	agreementsBox := titledBox(fmt.Sprintf("AGREEMENTS (%d)", len(m.team.Agreements)), agreementsContent, colWidth, topHeight, m.section == SectionAgreements)
+	actionsBox := titledBox(fmt.Sprintf("ACTIONS (%d)", len(domain.GetAllActionItems(m.history))), actionsContent, colWidth, topHeight, m.section == SectionActions)
 
 	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, membersBox, agreementsBox, actionsBox))
 	b.WriteString("\n\n")
 
 	// History sections side by side
 	histWidth := 3 * colWidth / 2
-	retroTitle := fmt.Sprintf("RETRO HISTORY (%d)", len(m.retroHistory()))
-	checkTitle := fmt.Sprintf("CHECK HISTORY (%d)", len(m.checkHistory()))
+	retroContent := m.renderFilteredHistory(m.retroHistory(), m.section == SectionRetroHistory)
+	checkContent := m.renderFilteredHistory(m.checkHistory(), m.section == SectionCheckHistory)
 
-	retroBox := titledBox(retroTitle, m.renderFilteredHistory(m.retroHistory(), m.section == SectionRetroHistory), histWidth, m.section == SectionRetroHistory)
-	checkBox := titledBox(checkTitle, m.renderFilteredHistory(m.checkHistory(), m.section == SectionCheckHistory), histWidth, m.section == SectionCheckHistory)
+	histHeight := contentHeight(retroContent)
+	if h := contentHeight(checkContent); h > histHeight {
+		histHeight = h
+	}
+
+	retroBox := titledBox(fmt.Sprintf("RETRO HISTORY (%d)", len(m.retroHistory())), retroContent, histWidth, histHeight, m.section == SectionRetroHistory)
+	checkBox := titledBox(fmt.Sprintf("CHECK HISTORY (%d)", len(m.checkHistory())), checkContent, histWidth, histHeight, m.section == SectionCheckHistory)
 
 	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, retroBox, checkBox))
 	b.WriteString("\n")
@@ -390,7 +404,8 @@ func (m HomeModel) View() string {
 
 // titledBox renders content inside a bordered box with a title embedded in the
 // top border line, e.g.: ╭─ TITLE ──────────╮
-func titledBox(title, content string, width int, active bool) string {
+// If minHeight > 0, empty lines are added to reach that content height.
+func titledBox(title, content string, width, minHeight int, active bool) string {
 	borderColor := styles.Border
 	if active {
 		borderColor = styles.Accent
@@ -409,6 +424,10 @@ func titledBox(title, content string, width int, active bool) string {
 
 	// Wrap content lines with side borders
 	contentLines := strings.Split(content, "\n")
+	// Pad to minHeight
+	for len(contentLines) < minHeight {
+		contentLines = append(contentLines, "")
+	}
 	var body strings.Builder
 	for _, line := range contentLines {
 		lineWidth := lipgloss.Width(line)
@@ -423,6 +442,11 @@ func titledBox(title, content string, width int, active bool) string {
 	bottom := bc.Render("╰" + strings.Repeat("─", innerWidth) + "╯")
 
 	return top + "\n" + body.String() + bottom
+}
+
+// contentHeight counts the number of lines in content.
+func contentHeight(content string) int {
+	return strings.Count(content, "\n") + 1
 }
 
 const maxPanelItems = 7
