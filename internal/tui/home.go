@@ -441,16 +441,20 @@ func titledBox(title, content, bottomLabel string, width, minHeight int, active 
 		body.WriteString(bc.Render("│") + " " + line + strings.Repeat(" ", pad-1) + bc.Render("│") + "\n")
 	}
 
-	// Bottom border with optional label
+	// Bottom border with optional label positioned at the last 1/3
 	var bottom string
 	if bottomLabel != "" {
 		labelStr := " " + bottomLabel + " "
 		labelLen := lipgloss.Width(labelStr)
-		rightDashBottom := innerWidth - 1 - labelLen
-		if rightDashBottom < 0 {
-			rightDashBottom = 0
+		leftDashes := innerWidth*2/3 - 1
+		if leftDashes < 1 {
+			leftDashes = 1
 		}
-		bottom = bc.Render("╰─") + bottomLabel + bc.Render(strings.Repeat("─", rightDashBottom)+"╯")
+		rightDashes := innerWidth - leftDashes - labelLen
+		if rightDashes < 0 {
+			rightDashes = 0
+		}
+		bottom = bc.Render("╰"+strings.Repeat("─", leftDashes)) + labelStr + bc.Render(strings.Repeat("─", rightDashes)+"╯")
 	} else {
 		bottom = bc.Render("╰" + strings.Repeat("─", innerWidth) + "╯")
 	}
