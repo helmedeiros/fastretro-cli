@@ -446,7 +446,7 @@ func titledBox(title, content, bottomLabel string, width, minHeight int, active 
 	if bottomLabel != "" {
 		labelStr := " " + bottomLabel + " "
 		labelLen := lipgloss.Width(labelStr)
-		leftDashes := innerWidth*2/3 - 1
+		leftDashes := innerWidth*3/4 - 1
 		if leftDashes < 1 {
 			leftDashes = 1
 		}
