@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/helmedeiros/fastretro-cli/internal/protocol"
 	"github.com/helmedeiros/fastretro-cli/internal/styles"
+	"github.com/helmedeiros/fastretro-cli/internal/widgets"
 )
 
 type voteItem struct {
@@ -112,7 +113,7 @@ func (m Model) viewVote() string {
 	}
 
 	if len(contents) > 0 {
-		b.WriteString(joinColumnsEqualHeight(contents, colStyles))
+		b.WriteString(widgets.JoinColumnsEqualHeight(contents, colStyles))
 	}
 
 	b.WriteString("\n\n")

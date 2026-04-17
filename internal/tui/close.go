@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/helmedeiros/fastretro-cli/internal/protocol"
 	"github.com/helmedeiros/fastretro-cli/internal/styles"
+	"github.com/helmedeiros/fastretro-cli/internal/widgets"
 )
 
 func (m Model) viewClose() string {
@@ -114,7 +115,7 @@ func (m Model) viewClose() string {
 		}
 
 		if len(boardContents) > 0 {
-			b.WriteString(joinColumnsEqualHeight(boardContents, boardStyles))
+			b.WriteString(widgets.JoinColumnsEqualHeight(boardContents, boardStyles))
 			b.WriteString("\n")
 		}
 	}

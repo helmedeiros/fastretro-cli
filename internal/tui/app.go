@@ -335,27 +335,6 @@ func (m Model) View() string {
 	return header + "\n\n" + body + "\n"
 }
 
-// joinColumnsEqualHeight renders column content strings inside styles.Column
-// with equal height, then joins them horizontally.
-func joinColumnsEqualHeight(contents []string, colStyles []lipgloss.Style) string {
-	// First render to measure heights
-	maxH := 0
-	for i, content := range contents {
-		r := colStyles[i].Render(content)
-		h := strings.Count(r, "\n") + 1
-		if h > maxH {
-			maxH = h
-		}
-	}
-	// Re-render with equal height
-	var rendered []string
-	for i, content := range contents {
-		r := colStyles[i].Height(maxH).Render(content)
-		rendered = append(rendered, r)
-	}
-	return lipgloss.JoinHorizontal(lipgloss.Top, rendered...)
-}
-
 // initStage initializes stage-specific state when entering a new stage.
 func (m *Model) initStage() {
 	if m.state == nil {

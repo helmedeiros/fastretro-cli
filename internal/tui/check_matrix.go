@@ -10,6 +10,7 @@ import (
 	"github.com/helmedeiros/fastretro-cli/internal/domain"
 	"github.com/helmedeiros/fastretro-cli/internal/protocol"
 	"github.com/helmedeiros/fastretro-cli/internal/styles"
+	"github.com/helmedeiros/fastretro-cli/internal/widgets"
 )
 
 // CheckMatrixModel displays a comparison matrix of check sessions.
@@ -91,19 +92,7 @@ func medianFromResponses(responses []protocol.SurveyResponse, questionID string)
 			ratings = append(ratings, r.Rating)
 		}
 	}
-	if len(ratings) == 0 {
-		return 0
-	}
-	for i := 1; i < len(ratings); i++ {
-		for j := i; j > 0 && ratings[j] < ratings[j-1]; j-- {
-			ratings[j], ratings[j-1] = ratings[j-1], ratings[j]
-		}
-	}
-	mid := len(ratings) / 2
-	if len(ratings)%2 == 0 {
-		return float64(ratings[mid-1]+ratings[mid]) / 2.0
-	}
-	return float64(ratings[mid])
+	return widgets.MedianInt(ratings)
 }
 
 func scoreStyle(score float64, maxLevel int) lipgloss.Style {

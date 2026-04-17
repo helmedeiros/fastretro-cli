@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/helmedeiros/fastretro-cli/internal/protocol"
 )
 
@@ -570,18 +569,6 @@ func TestStageIndexIn_Check(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("stageIndexIn(%q, checkStages) = %d, want %d", tt.stage, got, tt.want)
 		}
-	}
-}
-
-func TestJoinColumnsEqualHeight(t *testing.T) {
-	contents := []string{"A\nB", "C"}
-	colStyles := []lipgloss.Style{
-		lipgloss.NewStyle().Width(10),
-		lipgloss.NewStyle().Width(10),
-	}
-	result := joinColumnsEqualHeight(contents, colStyles)
-	if result == "" {
-		t.Error("expected non-empty result")
 	}
 }
 

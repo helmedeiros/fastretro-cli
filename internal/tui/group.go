@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/helmedeiros/fastretro-cli/internal/protocol"
 	"github.com/helmedeiros/fastretro-cli/internal/styles"
+	"github.com/helmedeiros/fastretro-cli/internal/widgets"
 )
 
 // groupItem is a flat list entry for cursor navigation within a column.
@@ -134,7 +135,7 @@ func (m Model) viewGroup() string {
 		colStyles = append(colStyles, style)
 	}
 
-	board := joinColumnsEqualHeight(contents, colStyles)
+	board := widgets.JoinColumnsEqualHeight(contents, colStyles)
 
 	var help string
 	if m.inputMode {

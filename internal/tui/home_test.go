@@ -422,43 +422,6 @@ func TestHome_CommitEmptyInput(t *testing.T) {
 	}
 }
 
-func TestScrollWindow_AllVisible(t *testing.T) {
-	start, end := scrollWindow(5, 0, 8)
-	if start != 0 || end != 5 {
-		t.Errorf("expected 0-5, got %d-%d", start, end)
-	}
-}
-
-func TestScrollWindow_ScrollsDown(t *testing.T) {
-	start, end := scrollWindow(20, 15, 8)
-	if end-start != 8 {
-		t.Errorf("window should be 8, got %d", end-start)
-	}
-	if start > 15 || end <= 15 {
-		t.Errorf("cursor 15 should be visible in %d-%d", start, end)
-	}
-}
-
-func TestScrollWindow_ClampsEnd(t *testing.T) {
-	start, end := scrollWindow(10, 9, 8)
-	if end != 10 {
-		t.Errorf("expected end=10, got %d", end)
-	}
-	if start != 2 {
-		t.Errorf("expected start=2, got %d", start)
-	}
-}
-
-func TestScrollWindow_ClampsStart(t *testing.T) {
-	start, end := scrollWindow(20, 0, 8)
-	if start != 0 {
-		t.Errorf("expected start=0, got %d", start)
-	}
-	if end != 8 {
-		t.Errorf("expected end=8, got %d", end)
-	}
-}
-
 func TestHome_ToggleDefaultMember(t *testing.T) {
 	m := testHomeModel(t)
 	m.section = SectionMembers

@@ -7,6 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/helmedeiros/fastretro-cli/internal/styles"
+	"github.com/helmedeiros/fastretro-cli/internal/widgets"
 )
 
 func (m Model) viewReview() string {
@@ -115,7 +116,7 @@ func (m Model) viewReview() string {
 		}
 
 		if len(boardContents) > 0 {
-			b.WriteString(joinColumnsEqualHeight(boardContents, boardStyles))
+			b.WriteString(widgets.JoinColumnsEqualHeight(boardContents, boardStyles))
 			b.WriteString("\n")
 		}
 	}

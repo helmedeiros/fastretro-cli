@@ -406,24 +406,6 @@ func (m HomeModel) View() string {
 
 const maxPanelItems = 7
 
-// scrollWindow returns start/end indices for a visible window around the cursor.
-func scrollWindow(total, cursor, maxVisible int) (int, int) {
-	if total <= maxVisible {
-		return 0, total
-	}
-	half := maxVisible / 2
-	start := cursor - half
-	if start < 0 {
-		start = 0
-	}
-	end := start + maxVisible
-	if end > total {
-		end = total
-		start = end - maxVisible
-	}
-	return start, end
-}
-
 func (m HomeModel) renderMembers() string {
 	accent := lipgloss.NewStyle().Foreground(styles.Accent).Bold(true)
 	muted := lipgloss.NewStyle().Foreground(styles.Muted)
@@ -438,7 +420,7 @@ func (m HomeModel) renderMembers() string {
 		if isActive {
 			cur = m.cursor
 		}
-		start, end := scrollWindow(len(m.team.Members), cur, maxPanelItems)
+		start, end := widgets.ScrollWindow(len(m.team.Members), cur, maxPanelItems)
 		if start > 0 {
 			lines = append(lines, muted.Render(fmt.Sprintf("  ↑ %d more", start)))
 		}
@@ -480,7 +462,7 @@ func (m HomeModel) renderAgreements() string {
 		if isActive {
 			cur = m.cursor
 		}
-		start, end := scrollWindow(len(m.team.Agreements), cur, maxPanelItems)
+		start, end := widgets.ScrollWindow(len(m.team.Agreements), cur, maxPanelItems)
 		if start > 0 {
 			lines = append(lines, muted.Render(fmt.Sprintf("  ↑ %d more", start)))
 		}
@@ -519,7 +501,7 @@ func (m HomeModel) renderActions() string {
 		if isActive {
 			cur = m.cursor
 		}
-		start, end := scrollWindow(len(items), cur, maxPanelItems)
+		start, end := widgets.ScrollWindow(len(items), cur, maxPanelItems)
 		if start > 0 {
 			lines = append(lines, muted.Render(fmt.Sprintf("  ↑ %d more", start)))
 		}
@@ -579,23 +561,11 @@ func overallCheckScore(state protocol.RetroState, tmpl protocol.CheckTemplate) f
 				ratings = append(ratings, r.Rating)
 			}
 		}
-		if len(ratings) == 0 {
-			continue
+		median := widgets.MedianInt(ratings)
+		if median > 0 {
+			sum += median
+			count++
 		}
-		for i := 1; i < len(ratings); i++ {
-			for j := i; j > 0 && ratings[j] < ratings[j-1]; j-- {
-				ratings[j], ratings[j-1] = ratings[j-1], ratings[j]
-			}
-		}
-		mid := len(ratings) / 2
-		var median float64
-		if len(ratings)%2 == 0 {
-			median = float64(ratings[mid-1]+ratings[mid]) / 2.0
-		} else {
-			median = float64(ratings[mid])
-		}
-		sum += median
-		count++
 	}
 	if count == 0 {
 		return 0
@@ -619,7 +589,7 @@ func (m HomeModel) renderFilteredHistory(items []domain.CompletedRetro, isActive
 	if isActive {
 		cur = m.cursor
 	}
-	start, end := scrollWindow(len(items), cur, 3)
+	start, end := widgets.ScrollWindow(len(items), cur, 3)
 	if start > 0 {
 		b.WriteString(muted.Render(fmt.Sprintf("  ↑ %d more", start)))
 		b.WriteString("\n")

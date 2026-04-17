@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/helmedeiros/fastretro-cli/internal/protocol"
 	"github.com/helmedeiros/fastretro-cli/internal/styles"
+	"github.com/helmedeiros/fastretro-cli/internal/widgets"
 )
 
 // brainstormItem is a flat entry for cursor navigation within a column.
@@ -142,7 +143,7 @@ func (m Model) viewBrainstorm() string {
 		colStyles = append(colStyles, style)
 	}
 
-	board := joinColumnsEqualHeight(contents, colStyles)
+	board := widgets.JoinColumnsEqualHeight(contents, colStyles)
 
 	help := "[j/k] navigate  [h/l] column  [a] add  [d] delete  [q] back"
 	if m.inputMode {
