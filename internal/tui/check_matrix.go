@@ -170,7 +170,7 @@ func (m CheckMatrixModel) View() string {
 	if len(sessions) == 0 {
 		b.WriteString(muted.Render("  No completed sessions for this template."))
 		b.WriteString("\n\n")
-		b.WriteString(muted.Render("[Tab] template  [q] back"))
+		b.WriteString(muted.Render("[Tab] template  [Esc] back"))
 		return b.String()
 	}
 
@@ -265,7 +265,7 @@ func (m CheckMatrixModel) View() string {
 	}
 	b.WriteString(overallRow)
 	b.WriteString("\n\n")
-	b.WriteString(muted.Render("[h/l] select  [Tab] template  [Enter] view  [q] back"))
+	b.WriteString(muted.Render("[h/l] select  [Tab] template  [Enter] view  [Esc] back"))
 	b.WriteString("\n")
 
 	return b.String()

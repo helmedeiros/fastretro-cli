@@ -221,7 +221,7 @@ func TestCheckMatrix_View_HelpAtBottom(t *testing.T) {
 	// Help should be near the end
 	found := false
 	for _, line := range lines[len(lines)-3:] {
-		if strings.Contains(line, "[q] back") {
+		if strings.Contains(line, "[Esc] back") {
 			found = true
 		}
 	}
