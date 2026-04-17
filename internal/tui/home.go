@@ -11,6 +11,7 @@ import (
 	"github.com/helmedeiros/fastretro-cli/internal/protocol"
 	"github.com/helmedeiros/fastretro-cli/internal/storage"
 	"github.com/helmedeiros/fastretro-cli/internal/styles"
+	"github.com/helmedeiros/fastretro-cli/internal/widgets"
 )
 
 // HomeSection identifies which panel has focus.
@@ -356,17 +357,18 @@ func (m HomeModel) View() string {
 	actionsContent := m.renderActions()
 
 	// Equal height for top row
-	topHeight := contentHeight(membersContent)
-	if h := contentHeight(agreementsContent); h > topHeight {
+	boxCfg := widgets.DefaultBoxConfig(styles.Accent, styles.Border)
+	topHeight := widgets.ContentHeight(membersContent)
+	if h := widgets.ContentHeight(agreementsContent); h > topHeight {
 		topHeight = h
 	}
-	if h := contentHeight(actionsContent); h > topHeight {
+	if h := widgets.ContentHeight(actionsContent); h > topHeight {
 		topHeight = h
 	}
 
-	membersBox := titledBox("MEMBERS", membersContent, fmt.Sprintf("%d total", len(m.team.Members)), colWidth, topHeight, m.section == SectionMembers)
-	agreementsBox := titledBox("AGREEMENTS", agreementsContent, fmt.Sprintf("%d total", len(m.team.Agreements)), colWidth, topHeight, m.section == SectionAgreements)
-	actionsBox := titledBox("ACTIONS", actionsContent, fmt.Sprintf("%d total", len(domain.GetAllActionItems(m.history))), colWidth, topHeight, m.section == SectionActions)
+	membersBox := widgets.TitledBox(boxCfg, "MEMBERS", membersContent, fmt.Sprintf("%d total", len(m.team.Members)), colWidth, topHeight, m.section == SectionMembers)
+	agreementsBox := widgets.TitledBox(boxCfg, "AGREEMENTS", agreementsContent, fmt.Sprintf("%d total", len(m.team.Agreements)), colWidth, topHeight, m.section == SectionAgreements)
+	actionsBox := widgets.TitledBox(boxCfg, "ACTIONS", actionsContent, fmt.Sprintf("%d total", len(domain.GetAllActionItems(m.history))), colWidth, topHeight, m.section == SectionActions)
 
 	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, membersBox, agreementsBox, actionsBox))
 	b.WriteString("\n\n")
@@ -376,13 +378,13 @@ func (m HomeModel) View() string {
 	retroContent := m.renderFilteredHistory(m.retroHistory(), m.section == SectionRetroHistory)
 	checkContent := m.renderFilteredHistory(m.checkHistory(), m.section == SectionCheckHistory)
 
-	histHeight := contentHeight(retroContent)
-	if h := contentHeight(checkContent); h > histHeight {
+	histHeight := widgets.ContentHeight(retroContent)
+	if h := widgets.ContentHeight(checkContent); h > histHeight {
 		histHeight = h
 	}
 
-	retroBox := titledBox("RETRO HISTORY", retroContent, fmt.Sprintf("%d total", len(m.retroHistory())), histWidth, histHeight, m.section == SectionRetroHistory)
-	checkBox := titledBox("CHECK HISTORY", checkContent, fmt.Sprintf("%d total", len(m.checkHistory())), histWidth, histHeight, m.section == SectionCheckHistory)
+	retroBox := widgets.TitledBox(boxCfg, "RETRO HISTORY", retroContent, fmt.Sprintf("%d total", len(m.retroHistory())), histWidth, histHeight, m.section == SectionRetroHistory)
+	checkBox := widgets.TitledBox(boxCfg, "CHECK HISTORY", checkContent, fmt.Sprintf("%d total", len(m.checkHistory())), histWidth, histHeight, m.section == SectionCheckHistory)
 
 	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, retroBox, checkBox))
 	b.WriteString("\n")
@@ -400,71 +402,6 @@ func (m HomeModel) View() string {
 	}
 
 	return b.String()
-}
-
-// titledBox renders content inside a bordered box with a title in the top
-// border and an optional label in the bottom border.
-// e.g.: ╭─ TITLE ──────────╮
-//
-//	│ content           │
-//	╰─ 1 of 12 ────────╯
-func titledBox(title, content, bottomLabel string, width, minHeight int, active bool) string {
-	borderColor := styles.Border
-	if active {
-		borderColor = styles.Accent
-	}
-	bc := lipgloss.NewStyle().Foreground(borderColor)
-
-	// Build top border with title
-	titleStr := " " + title + " "
-	titleLen := lipgloss.Width(titleStr)
-	innerWidth := width - 2                // minus left+right border chars
-	rightDash := innerWidth - 1 - titleLen // 1 for left dash
-	if rightDash < 0 {
-		rightDash = 0
-	}
-	top := bc.Render("╭─") + titleStr + bc.Render(strings.Repeat("─", rightDash)+"╮")
-
-	// Wrap content lines with side borders
-	contentLines := strings.Split(content, "\n")
-	// Pad to minHeight
-	for len(contentLines) < minHeight {
-		contentLines = append(contentLines, "")
-	}
-	var body strings.Builder
-	for _, line := range contentLines {
-		lineWidth := lipgloss.Width(line)
-		pad := innerWidth - lineWidth
-		if pad < 0 {
-			pad = 0
-		}
-		body.WriteString(bc.Render("│") + " " + line + strings.Repeat(" ", pad-1) + bc.Render("│") + "\n")
-	}
-
-	// Bottom border with optional label positioned at the last 1/3
-	var bottom string
-	if bottomLabel != "" {
-		labelStr := " " + bottomLabel + " "
-		labelLen := lipgloss.Width(labelStr)
-		leftDashes := innerWidth*3/4 - 1
-		if leftDashes < 1 {
-			leftDashes = 1
-		}
-		rightDashes := innerWidth - leftDashes - labelLen
-		if rightDashes < 0 {
-			rightDashes = 0
-		}
-		bottom = bc.Render("╰"+strings.Repeat("─", leftDashes)) + labelStr + bc.Render(strings.Repeat("─", rightDashes)+"╯")
-	} else {
-		bottom = bc.Render("╰" + strings.Repeat("─", innerWidth) + "╯")
-	}
-
-	return top + "\n" + body.String() + bottom
-}
-
-// contentHeight counts the number of lines in content.
-func contentHeight(content string) int {
-	return strings.Count(content, "\n") + 1
 }
 
 const maxPanelItems = 7
