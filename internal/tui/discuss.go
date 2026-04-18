@@ -168,6 +168,7 @@ func (m Model) viewDiscuss() string {
 
 func (m Model) renderNoteLane(title string, notes []noteEntry, active bool) string {
 	var lines []string
+	maxTextWidth := styles.Column.GetWidth() - 4 // padding + cursor prefix
 
 	var header string
 	if active {
@@ -186,12 +187,18 @@ func (m Model) renderNoteLane(title string, notes []noteEntry, active bool) stri
 			if active && i == m.cursor {
 				cursor = "> "
 			}
-			text := n.Text
-			line := fmt.Sprintf("%s%s", cursor, text)
-			if active && i == m.cursor {
-				lines = append(lines, styles.Selected.Render(line))
-			} else {
-				lines = append(lines, line)
+			wrapped := wrapText(n.Text, maxTextWidth)
+			for j, wline := range wrapped {
+				prefix := cursor
+				if j > 0 {
+					prefix = "  " // continuation lines get plain indent
+				}
+				line := prefix + wline
+				if active && i == m.cursor {
+					lines = append(lines, styles.Selected.Render(line))
+				} else {
+					lines = append(lines, line)
+				}
 			}
 		}
 	}
@@ -375,4 +382,8 @@ func (m Model) notesForItem(itemID, lane string) []noteEntry {
 
 type noteEntry struct {
 	Text string
+}
+
+func wrapText(text string, maxWidth int) []string {
+	return widgets.WrapText(text, maxWidth)
 }
