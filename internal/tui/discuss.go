@@ -46,6 +46,9 @@ func (m Model) viewDiscuss() string {
 
 	isCheck := m.state.Meta.Type == "check"
 
+	// Max width for the active card = same as the two lane columns combined
+	activeCardMaxWidth := styles.Column.GetWidth() * 2
+
 	// Carousel: show items with vote counts or medians, current enlarged
 	var carouselCards []string
 	for i, id := range order {
@@ -69,11 +72,14 @@ func (m Model) viewDiscuss() string {
 				}
 			}
 			if isCheck {
-				// Show question description for current item
+				// Show question description wrapped to fit the card
 				tmpl := protocol.GetCheckTemplate(m.state.Meta.TemplateID)
 				for _, q := range tmpl.Questions {
 					if q.ID == id {
-						lines = append(lines, styles.Subtitle.Render(q.Description))
+						wrapped := wrapText(q.Description, activeCardMaxWidth-4)
+						for _, wl := range wrapped {
+							lines = append(lines, styles.Subtitle.Render(wl))
+						}
 						break
 					}
 				}
@@ -81,7 +87,8 @@ func (m Model) viewDiscuss() string {
 				votes := m.votesForItem(id)
 				lines = append(lines, styles.VoteBadge.Render(fmt.Sprintf("Votes: %d", votes)))
 			}
-			carouselCards = append(carouselCards, styles.ActiveCard.Render(strings.Join(lines, "\n")))
+			activeCard := styles.ActiveCard.Width(activeCardMaxWidth)
+			carouselCards = append(carouselCards, activeCard.Render(strings.Join(lines, "\n")))
 		} else {
 			content := label
 			if isCheck {
