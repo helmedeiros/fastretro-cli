@@ -74,12 +74,11 @@ func (m Model) viewDiscuss() string {
 			if isCheck {
 				// Show question description wrapped to fit the card
 				tmpl := protocol.GetCheckTemplate(m.state.Meta.TemplateID)
+				descStyle := lipgloss.NewStyle().Foreground(styles.Muted)
 				for _, q := range tmpl.Questions {
 					if q.ID == id {
 						wrapped := wrapText(q.Description, activeCardMaxWidth-4)
-						for _, wl := range wrapped {
-							lines = append(lines, styles.Subtitle.Render(wl))
-						}
+						lines = append(lines, descStyle.Render(strings.Join(wrapped, "\n")))
 						break
 					}
 				}
