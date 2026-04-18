@@ -523,16 +523,35 @@ func (m ShellModel) viewNewCheck() string {
 		}
 		line := fmt.Sprintf("%s%s (%d questions)", cursor, tmpl.Name, len(tmpl.Questions))
 		if i == m.checkTemplateCursor {
-			s += styles.Selected.Render(line) + "\n"
-			for _, q := range tmpl.Questions {
-				s += muted.Render(fmt.Sprintf("    %s — %s", q.Title, q.Description)) + "\n"
+			s += styles.Selected.Render(line) + "\n\n"
+			for j, q := range tmpl.Questions {
+				num := fmt.Sprintf("  %d. ", j+1)
+				s += accent.Render(num+q.Title) + "\n"
+				// Truncate long descriptions
+				desc := q.Description
+				if len(desc) > 80 {
+					desc = desc[:77] + "..."
+				}
+				s += muted.Render("     "+desc) + "\n"
+				// Show options summary
+				optLabels := make([]string, len(q.Options))
+				for k, o := range q.Options {
+					optLabels[k] = o.Label
+				}
+				if len(optLabels) <= 5 {
+					s += muted.Render("     Options: "+strings.Join(optLabels, " | ")) + "\n"
+				} else {
+					s += muted.Render(fmt.Sprintf("     Options: %s ... %s (%d levels)",
+						optLabels[0], optLabels[len(optLabels)-1], len(optLabels))) + "\n"
+				}
+				s += "\n"
 			}
 		} else {
 			s += line + "\n"
 		}
 	}
 
-	s += "\n" + muted.Render("  [↑↓] select  [Enter] choose  [Esc] back")
+	s += muted.Render("  [j/k] select  [Enter] choose  [Esc] back")
 	return s
 }
 
