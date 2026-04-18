@@ -1,6 +1,6 @@
 # fastretro-cli
 
-A standalone terminal tool for sprint retrospectives and team health checks. Manage teams, track action items, run retros and checks locally, or join remote [fastRetro](https://github.com/helmedeiros/fastRetro) sessions — all without leaving your terminal.
+A terminal tool for sprint retrospectives and team health checks. Manage teams, track action items, run sessions locally, or join remote [fastRetro](https://github.com/helmedeiros/fastRetro) sessions — all without leaving your terminal.
 
 Built with [Bubble Tea](https://github.com/charmbracelet/bubbletea) and [Lip Gloss](https://github.com/charmbracelet/lipgloss).
 
@@ -8,323 +8,203 @@ Built with [Bubble Tea](https://github.com/charmbracelet/bubbletea) and [Lip Glo
 
 ```bash
 go install github.com/helmedeiros/fastretro-cli/cmd/fastretro@latest
-
-# Launch the dashboard
 fastretro
-
-# Or join a remote session directly
-fastretro join "http://localhost:5173/#room=ABC-123-DEF"
 ```
 
-Or build from source:
+## What it does
 
-```bash
-git clone https://github.com/helmedeiros/fastretro-cli.git
-cd fastretro-cli
-make build
-./bin/fastretro
-```
+**Two session types, one workflow:**
 
-## Home Screen
+| | Retrospective | Check |
+|---|---|---|
+| **Purpose** | Reflect on a sprint | Measure team health |
+| **Input** | Cards in columns | Rate questions 1-N |
+| **Templates** | Start/Stop, Mad Sad Glad, KALM, Four Ls, Starfish, Anchors & Engines | Health Check (9 Qs), DORA Metrics Quiz (5 Qs) |
+| **Stages** | Icebreaker → Brainstorm → Group → Vote → Discuss → Review → Close | Icebreaker → Survey → Discuss → Review → Close |
+| **Discuss** | Cards ordered by votes | Questions ordered by median (worst first) |
+| **Output** | Action items + board overview | Action items + score comparison |
 
-Running `fastretro` with no arguments launches the team dashboard.
+Both produce **action items with owners** that persist on your team dashboard.
+
+## Home screen
 
 ![Home screen](docs/screenshots/07-home.png)
 
-| Key       | Action                        |
-|-----------|-------------------------------|
-| `Tab`     | Cycle between panels          |
-| `j` / `k` | Navigate within panel         |
-| `a`       | Add item (member/agreement/action) |
-| `d`       | Delete selected item          |
-| `e`       | Edit selected item            |
-| `Enter`   | Toggle action done / View history |
-| `v`       | Compare checks (score matrix) |
-| `*`       | Set default member (me)       |
-| `J`       | Join a remote session         |
-| `n`       | Start a new local retro       |
-| `c`       | Start a new check             |
-| `t`       | Open team selector            |
-| `q`       | Quit                          |
+Members, agreements, action items, and session history — all in titled panels. Retro and check history are separate, with scores and stats.
 
-## Team Management
+## Running a check
 
-Press `t` from the home screen to manage teams. Create new teams, switch between them, rename, or delete.
+Press `c` from home → pick a template → name it → go.
 
-![Team selector](docs/screenshots/08-teams.png)
+<details>
+<summary>See the full check flow</summary>
 
-![Create team](docs/screenshots/09-team-create.png)
+### 1. Pick a template
 
-| Key       | Action          |
-|-----------|-----------------|
-| `j` / `k` | Navigate teams  |
-| `Enter`   | Select team     |
-| `a`       | Create new team |
-| `e`       | Rename team     |
-| `d`       | Delete team     |
-| `Esc`     | Back to home    |
+Each template shows its questions with descriptions and option scales.
 
-Or use CLI commands:
+![New check](docs/screenshots/12-new-check.png)
 
-```bash
-fastretro team list
-fastretro team create "Backend Crew"
-fastretro team select "Backend Crew"
-fastretro team delete "Old Team"
-```
+### 2. Name your check
 
-Each team has its own members, agreements, action items, and retro history stored locally in `~/.fastretro/`.
+![Check name](docs/screenshots/13-check-name.png)
 
-## Retro Stages
+### 3. Icebreaker
 
-Every session follows a stage flow. The stage bar at the top always shows where you are:
+Same warm-up as retros — spin questions for each participant.
 
-**Retrospective:** `ICEBREAKER  BRAINSTORM  GROUP  VOTE  DISCUSS  REVIEW  CLOSE`
+![Icebreaker](docs/screenshots/14-check-icebreaker.png)
 
-**Check:** `ICEBREAKER  SURVEY  DISCUSS  REVIEW  CLOSE`
+### 4. Survey
 
----
+Rate each question with number keys. Add comments with `e`.
 
-### Join
+![Survey](docs/screenshots/15-check-survey.png)
 
-Pick your identity from the participant list or add a new name.
+### 5. Discuss
 
-![Join screen](docs/screenshots/01-join.png)
+Questions carousel ordered by median score (worst first). Add action items.
 
-| Key       | Action                |
-|-----------|-----------------------|
-| `j` / `k` | Navigate participants |
-| `Enter`   | Select identity       |
-| `a`       | Add new name          |
-| `q`       | Back                  |
+![Discuss](docs/screenshots/16-check-discuss.png)
 
----
+### 6. Review
 
-### Icebreaker
+Assign owners to action items.
 
-Watch the icebreaker question and see who's answering. Controlled from the web app.
+![Review](docs/screenshots/17-check-review.png)
+
+### 7. Close
+
+Summary with stats, action items, and survey results.
+
+![Close](docs/screenshots/18-check-close.png)
+
+</details>
+
+## Running a retro
+
+Press `n` from home → pick a template → name it → go.
+
+<details>
+<summary>See the full retro flow</summary>
+
+### 1. Pick a template
+
+Six facilitation designs with column descriptions.
+
+![New retro](docs/screenshots/11-new-retro.png)
+
+### 2. Icebreaker
+
+Spin random questions for each participant.
 
 ![Icebreaker](docs/screenshots/02-icebreaker.png)
 
----
+### 3. Brainstorm
 
-### Brainstorm
-
-Add cards to columns. Navigate between columns with `Tab`. Each column shows its template description so everyone knows what to write about.
+Add cards to template columns. `a` to add, `d` to delete.
 
 ![Brainstorm](docs/screenshots/03-brainstorm.png)
 
-| Key              | Action            |
-|------------------|-------------------|
-| `j` / `k`        | Navigate cards    |
-| `Tab` / `l` / `h` | Switch column    |
-| `a`              | Add card          |
-| `d`              | Delete your card  |
-| `Enter`          | Submit card       |
-| `Esc`            | Cancel input      |
+### 4. Group
 
----
-
-### Group
-
-Merge related cards into clusters. Select a card, press `m`, navigate to the target, press `m` again. Rename groups with `e`, ungroup with `u`.
+Merge related cards with `m` (two-step). Rename with `e`.
 
 ![Group](docs/screenshots/04-group.png)
 
-| Key              | Action             |
-|------------------|--------------------|
-| `j` / `k`        | Navigate items     |
-| `Tab` / `l` / `h` | Switch column     |
-| `m`              | Merge (two-step)   |
-| `e`              | Rename group       |
-| `u`              | Ungroup card       |
-| `Esc`            | Cancel merge       |
+### 5. Vote
 
----
-
-### Vote
-
-Cast votes on cards and groups within your budget. Vote counts and your own votes are shown inline. Groups expand to show their cards for context.
+Cast votes within your budget. `Enter` to vote, `u` to unvote.
 
 ![Vote](docs/screenshots/05-vote.png)
 
-| Key              | Action            |
-|------------------|-------------------|
-| `j` / `k`        | Navigate items    |
-| `Tab` / `l` / `h` | Switch column    |
-| `Enter` / `Space` | Cast vote        |
-| `u`              | Remove your vote  |
+### 6. Discuss
 
----
-
-### Survey (Checks only)
-
-Rate each question from the check template. Scores are used to calculate medians for the discuss stage.
-
-| Key              | Action            |
-|------------------|-------------------|
-| `j` / `k`        | Navigate questions |
-| `1`-`9`          | Rate question     |
-| `e`              | Add/edit comment  |
-
----
-
-### Discuss
-
-Walk through items in the discussion carousel. For retros, items are ordered by vote count. For checks, items are questions ordered by median score (worst first). View context and action notes side by side. Navigate between items with `p`/`n`, switch lanes with `Tab`, and add notes with `a`.
+Carousel of items ordered by votes. Context + Actions lanes.
 
 ![Discuss](docs/screenshots/06-discuss.png)
 
-| Key       | Action                    |
-|-----------|---------------------------|
-| `j` / `k` | Navigate notes            |
-| `Tab`     | Switch context/actions     |
-| `l` / `h` | Switch context/actions    |
-| `p`       | Previous item              |
-| `n`       | Next item                  |
-| `a`       | Add note to active lane    |
+### 7. Review & Close
 
----
+Assign action item owners, then view the summary.
 
-### Review
+</details>
 
-Browse action items and assign owners. The board overview shows all columns side by side.
+## Check comparison
 
-| Key       | Action          |
-|-----------|-----------------|
-| `j` / `k` | Navigate items  |
-| `a`       | Assign owner    |
+Press `v` from home to compare scores across check sessions.
 
----
+![Compare](docs/screenshots/19-check-compare.png)
 
-### Close
+Tab between templates. Scores are color-coded: green (high), red (low). Press Enter on a column to view that session.
 
-View the retro summary: stats, action items with owners, and a full board overview.
+## Joining a remote session
 
----
+Press `J` from home, paste the room code or URL. Changes sync in real time via WebSocket.
 
-## Supported templates
+![Join](docs/screenshots/10-join.png)
 
-The CLI supports all 6 facilitation templates, each with proper column titles and descriptions:
+## Team management
 
-| Template         | Columns                                    |
-|------------------|--------------------------------------------|
-| Start / Stop     | Stop, Start                                |
-| Anchors & Engines | Anchors, Engines                          |
-| Mad Sad Glad     | Mad, Sad, Glad                             |
-| Four Ls          | Liked, Learned, Lacked, Longed for         |
-| KALM             | Keep, Add, Less, More                      |
-| Starfish         | Start, More of, Continue, Less of, Stop    |
-
-## Check Comparison Matrix
-
-Press `v` from the home screen to open the check comparison view. See scores across sessions side by side, color-coded by performance.
-
-| Key       | Action              |
-|-----------|---------------------|
-| `h` / `l` | Select session      |
-| `Tab`     | Switch template     |
-| `Enter`   | View session detail |
-| `q`       | Back to home        |
-
-## Supported check templates
-
-| Template           | Questions | Scale  |
-|--------------------|-----------|--------|
-| Health Check       | 9         | 1-5 numeric |
-| DORA Metrics Quiz  | 5         | Labeled options |
-
-## How it works
-
-### Standalone mode
-
-Press `n` from the home screen to start a retro, or `c` to start a check. Pick a template, name your session, and go. Team members are pre-loaded as participants. When the retro ends, action items are saved to the team's history.
-
-![New retro template picker](docs/screenshots/11-new-retro.png)
-
-### Remote mode
-
-Press `J` to join a remote session hosted by the [fastRetro web app](https://github.com/helmedeiros/fastRetro). Paste the room code or URL and connect. Changes sync in real time. When you leave, participants are automatically added to your team and action items are saved.
-
-![Join retro](docs/screenshots/10-join.png)
-
-```
-Browser (host)  <--- WebSocket --->  Vite dev server  <--- WebSocket --->  CLI (participant)
-```
-
-When you leave a remote session, participants are automatically added to your team and action items are saved to history.
-
-## Usage
+Press `t` to manage teams. Each team has its own members, agreements, action items, and history stored in `~/.fastretro/`.
 
 ```bash
-# Launch dashboard (manage teams, start retros)
-fastretro
-
-# Join a remote session by room code
-fastretro join ABC-123-DEF
-
-# Join by URL (paste from browser)
-fastretro join "http://localhost:5173/#room=ABC-123-DEF"
-
-# Custom server
-fastretro join ABC-123-DEF --server https://retro.example.com
-
-# Team management
 fastretro team list
 fastretro team create "My Team"
 fastretro team select "My Team"
 ```
+
+## Keyboard shortcuts
+
+Consistent vim-style keys across all screens:
+
+| Key | Action |
+|-----|--------|
+| `j`/`k` | Navigate up/down |
+| `h`/`l` | Navigate left/right |
+| `Tab` | Cycle sections/panels |
+| `Enter` | Confirm/select |
+| `a` | Add/create/assign |
+| `d` | Delete |
+| `e` | Edit/rename/comment |
+| `n`/`p` | Next/prev (carousels) |
+| `[`/`]` | Prev/next stage |
+| `Esc` | Cancel/back |
+| `q` | Back/quit |
 
 ## Development
 
 ```bash
 make build      # Build binary to ./bin/fastretro
 make test       # Run all tests
-make cover      # Coverage report (93%+)
-make lint       # Go vet
-make cover-html # Open coverage in browser
+make check      # Full quality gate: fmt + lint + test-race + build
+make cover      # Coverage report
 ```
 
 ### Project structure
 
 ```
-cmd/fastretro/        CLI entry point (cobra commands)
+cmd/fastretro/        CLI entry point (cobra)
 internal/
-  domain/             Team, history, registry (pure functions, no I/O)
+  domain/             Team, history, registry (pure functions)
   storage/            JSON file persistence (~/.fastretro/)
-  protocol/           WebSocket message types + facilitation templates
+  protocol/           WebSocket messages + templates
   client/             WebSocket connection manager
-  tui/                Bubble Tea views (home, shell, retro stages)
-  styles/             Lip Gloss dark theme
+  tui/                Bubble Tea views (home, shell, stages)
+  widgets/            Reusable TUI components (box, scroll, columns, median, wrap)
+  styles/             Lip Gloss theme
 ```
 
-### Data storage
+### Quality gates
 
-```
-~/.fastretro/
-  config.json                  Selected team ID
-  teams/
-    registry.json              Team list [{id, name, createdAt}]
-    <team-id>/
-      team.json                Members + agreements
-      history.json             Completed retros + action items
-```
-
-### Test pyramid
-
-| Layer      | Focus                                      | Coverage |
-|------------|--------------------------------------------|----------|
-| Protocol   | JSON serialization, templates              | 100%     |
-| Domain     | Team, history, registry pure functions     | 99%      |
-| Client     | Room codes, WebSocket integration          | 88%      |
-| Storage    | JSON file persistence                      | 86%      |
-| TUI        | Views, key handlers, state mutations       | 91%      |
-| **Total**  |                                            | **91%**  |
+- **golangci-lint**: 12 linters (errcheck, staticcheck, govet, unused, gosimple, misspell, revive, gofmt, goimports, ineffassign, typecheck)
+- **Race detection**: All tests run with `-race`
+- **CI**: GitHub Actions on every push/PR to main
 
 ## Requirements
 
 - Go 1.21+
-- A running [fastRetro](https://github.com/helmedeiros/fastRetro) instance
+- A running [fastRetro](https://github.com/helmedeiros/fastRetro) instance (for remote sessions)
 
 ## License
 
