@@ -49,9 +49,24 @@ func (m Model) viewDiscuss() string {
 	// Max width for the active card = same as the two lane columns combined
 	activeCardMaxWidth := styles.Column.GetWidth() * 2
 
-	// Carousel: show items with vote counts or medians, current enlarged
+	// Carousel: show a sliding window of items around the current one
+	maxVisible := 5 // active + 2 on each side
+	windowStart := discuss.CurrentIndex - maxVisible/2
+	if windowStart < 0 {
+		windowStart = 0
+	}
+	windowEnd := windowStart + maxVisible
+	if windowEnd > len(order) {
+		windowEnd = len(order)
+		windowStart = windowEnd - maxVisible
+		if windowStart < 0 {
+			windowStart = 0
+		}
+	}
+
 	var carouselCards []string
-	for i, id := range order {
+	for i := windowStart; i < windowEnd; i++ {
+		id := order[i]
 		label := m.labelForItem(id)
 
 		if i == discuss.CurrentIndex {
