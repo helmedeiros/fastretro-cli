@@ -3,6 +3,7 @@ package client
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -85,8 +86,50 @@ func (c *Client) RequestState() error {
 }
 
 // ShareURL returns a shareable URL for the room.
+// If the server URL uses localhost, it replaces it with the machine's LAN IP
+// so the URL is usable from other devices on the network.
 func (c *Client) ShareURL(serverURL string) string {
-	return fmt.Sprintf("%s/#room=%s", strings.TrimRight(serverURL, "/"), c.RoomCode)
+	base := strings.TrimRight(serverURL, "/")
+	base = replaceLocalhostWithLAN(base)
+	return fmt.Sprintf("%s/#room=%s", base, c.RoomCode)
+}
+
+// replaceLocalhostWithLAN substitutes localhost/127.0.0.1 with the first
+// non-loopback IPv4 address found on the machine.
+func replaceLocalhostWithLAN(rawURL string) string {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+	host := parsed.Hostname()
+	if host != "localhost" && host != "127.0.0.1" {
+		return rawURL
+	}
+	lanIP := detectLANIP()
+	if lanIP == "" {
+		return rawURL
+	}
+	port := parsed.Port()
+	if port != "" {
+		parsed.Host = lanIP + ":" + port
+	} else {
+		parsed.Host = lanIP
+	}
+	return parsed.String()
+}
+
+// detectLANIP returns the first non-loopback IPv4 address.
+func detectLANIP() string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return ""
+	}
+	for _, addr := range addrs {
+		if ipNet, ok := addr.(*net.IPNet); ok && !ipNet.IP.IsLoopback() && ipNet.IP.To4() != nil {
+			return ipNet.IP.String()
+		}
+	}
+	return ""
 }
 
 // CreateRoom calls the server API to create a new room and returns the code.

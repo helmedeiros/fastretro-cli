@@ -1,6 +1,9 @@
 package client
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestExtractRoomCode_DirectCode(t *testing.T) {
 	tests := []struct {
@@ -107,20 +110,48 @@ func TestToWSURL(t *testing.T) {
 	}
 }
 
-func TestShareURL(t *testing.T) {
+func TestShareURL_ReplacesLocalhost(t *testing.T) {
 	c := &Client{RoomCode: "ABC-123-DEF"}
 	got := c.ShareURL("http://localhost:5173")
-	want := "http://localhost:5173/#room=ABC-123-DEF"
-	if got != want {
-		t.Errorf("got %q, want %q", got, want)
+	// Should NOT contain localhost — replaced with LAN IP
+	if strings.Contains(got, "localhost") {
+		// Only fail if a LAN IP is actually available
+		if detectLANIP() != "" {
+			t.Errorf("expected localhost replaced, got %q", got)
+		}
+	}
+	if !strings.Contains(got, "#room=ABC-123-DEF") {
+		t.Errorf("expected room code in URL, got %q", got)
 	}
 }
 
 func TestShareURL_TrailingSlash(t *testing.T) {
 	c := &Client{RoomCode: "ABC-123"}
 	got := c.ShareURL("http://localhost:5173/")
-	want := "http://localhost:5173/#room=ABC-123"
+	if !strings.Contains(got, "#room=ABC-123") {
+		t.Errorf("expected room code, got %q", got)
+	}
+	if strings.HasSuffix(strings.Split(got, "#")[0], "//") {
+		t.Errorf("double slash before hash: %q", got)
+	}
+}
+
+func TestShareURL_NonLocalhost(t *testing.T) {
+	c := &Client{RoomCode: "XYZ-789"}
+	got := c.ShareURL("http://192.168.1.50:5173")
+	want := "http://192.168.1.50:5173/#room=XYZ-789"
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestDetectLANIP(t *testing.T) {
+	ip := detectLANIP()
+	// On any real machine this should find at least one IP
+	if ip == "" {
+		t.Skip("no LAN IP detected (CI/container environment)")
+	}
+	if strings.HasPrefix(ip, "127.") {
+		t.Errorf("got loopback address: %s", ip)
 	}
 }
