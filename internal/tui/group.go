@@ -76,9 +76,9 @@ func (m Model) viewGroup() string {
 
 		var lines []string
 		for i, item := range items {
-			cursor := " "
+			cursor := "  "
 			if isActive && i == m.cursor {
-				cursor = ">"
+				cursor = "> "
 			}
 
 			isMergeSource := item.kind == "card" && item.cardID == m.mergeSource
@@ -89,7 +89,7 @@ func (m Model) viewGroup() string {
 				if isActive && i == m.cursor {
 					lines = append(lines, styles.Selected.Render(line))
 				} else {
-					lines = append(lines, styles.Selected.Render(" ┌ "+item.label))
+					lines = append(lines, styles.Selected.Render("  ┌ "+item.label))
 				}
 
 			case "card":
@@ -105,13 +105,13 @@ func (m Model) viewGroup() string {
 				} else if isActive && i == m.cursor {
 					lines = append(lines, styles.Selected.Render(line))
 				} else {
-					lines = append(lines, fmt.Sprintf(" %s%s", prefix, text))
+					lines = append(lines, fmt.Sprintf("  %s%s", prefix, text))
 				}
 			}
 		}
 
 		if len(lines) == 0 {
-			lines = append(lines, styles.Subtitle.Render("(empty)"))
+			lines = append(lines, styles.Subtitle.Render("  (empty)"))
 		}
 
 		muted := lipgloss.NewStyle().Foreground(styles.Muted)
