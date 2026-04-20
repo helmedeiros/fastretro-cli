@@ -99,6 +99,21 @@ func (m HomeModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "shift+tab":
 		m.section = (m.section + sectionCount - 1) % sectionCount
 		m.cursor = 0
+	case "1":
+		m.section = SectionMembers
+		m.cursor = 0
+	case "2":
+		m.section = SectionAgreements
+		m.cursor = 0
+	case "3":
+		m.section = SectionActions
+		m.cursor = 0
+	case "4":
+		m.section = SectionRetroHistory
+		m.cursor = 0
+	case "5":
+		m.section = SectionCheckHistory
+		m.cursor = 0
 	case "up", "k":
 		if m.cursor > 0 {
 			m.cursor--
@@ -366,9 +381,9 @@ func (m HomeModel) View() string {
 		topHeight = h
 	}
 
-	membersBox := widgets.TitledBox(boxCfg, "MEMBERS", membersContent, fmt.Sprintf("%d total", len(m.team.Members)), colWidth, topHeight, m.section == SectionMembers)
-	agreementsBox := widgets.TitledBox(boxCfg, "AGREEMENTS", agreementsContent, fmt.Sprintf("%d total", len(m.team.Agreements)), colWidth, topHeight, m.section == SectionAgreements)
-	actionsBox := widgets.TitledBox(boxCfg, "ACTIONS", actionsContent, fmt.Sprintf("%d total", len(domain.GetAllActionItems(m.history))), colWidth, topHeight, m.section == SectionActions)
+	membersBox := widgets.TitledBox(boxCfg, "[1] MEMBERS", membersContent, fmt.Sprintf("%d total", len(m.team.Members)), colWidth, topHeight, m.section == SectionMembers)
+	agreementsBox := widgets.TitledBox(boxCfg, "[2] AGREEMENTS", agreementsContent, fmt.Sprintf("%d total", len(m.team.Agreements)), colWidth, topHeight, m.section == SectionAgreements)
+	actionsBox := widgets.TitledBox(boxCfg, "[3] ACTIONS", actionsContent, fmt.Sprintf("%d total", len(domain.GetAllActionItems(m.history))), colWidth, topHeight, m.section == SectionActions)
 
 	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, membersBox, agreementsBox, actionsBox))
 	b.WriteString("\n\n")
@@ -383,8 +398,8 @@ func (m HomeModel) View() string {
 		histHeight = h
 	}
 
-	retroBox := widgets.TitledBox(boxCfg, "RETRO HISTORY", retroContent, fmt.Sprintf("%d total", len(m.retroHistory())), histWidth, histHeight, m.section == SectionRetroHistory)
-	checkBox := widgets.TitledBox(boxCfg, "CHECK HISTORY", checkContent, fmt.Sprintf("%d total", len(m.checkHistory())), histWidth, histHeight, m.section == SectionCheckHistory)
+	retroBox := widgets.TitledBox(boxCfg, "[4] RETRO HISTORY", retroContent, fmt.Sprintf("%d total", len(m.retroHistory())), histWidth, histHeight, m.section == SectionRetroHistory)
+	checkBox := widgets.TitledBox(boxCfg, "[5] CHECK HISTORY", checkContent, fmt.Sprintf("%d total", len(m.checkHistory())), histWidth, histHeight, m.section == SectionCheckHistory)
 
 	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, retroBox, checkBox))
 	b.WriteString("\n")
@@ -396,7 +411,7 @@ func (m HomeModel) View() string {
 		b.WriteString(muted.Render("  [Enter] save  [Esc] cancel"))
 	} else {
 		b.WriteString("\n")
-		b.WriteString(muted.Render("[Tab] section  [a] add  [d] del  [e] edit  [Enter] select  [v] compare  [*] me"))
+		b.WriteString(muted.Render("[1-5] section  [a] add  [d] del  [e] edit  [Enter] select  [v] compare  [*] me"))
 		b.WriteString("\n")
 		b.WriteString(muted.Render("[J] join  [n] retro  [c] check  [t] teams  [q] quit"))
 	}

@@ -95,7 +95,7 @@ func TestHomeView_ShowsHistory(t *testing.T) {
 func TestHomeView_ShowsHelp(t *testing.T) {
 	m := testHomeModel(t)
 	view := m.View()
-	if !strings.Contains(view, "Tab") {
+	if !strings.Contains(view, "[1-5] section") {
 		t.Error("expected help keys")
 	}
 }
@@ -147,6 +147,30 @@ func TestHome_TabCyclesSections(t *testing.T) {
 	m = result.(HomeModel)
 	if m.section != SectionMembers {
 		t.Errorf("expected wrap to members, got %d", m.section)
+	}
+}
+
+func TestHome_NumberKeyJumpsToSection(t *testing.T) {
+	m := testHomeModel(t)
+	tests := []struct {
+		key     string
+		section HomeSection
+	}{
+		{"1", SectionMembers},
+		{"2", SectionAgreements},
+		{"3", SectionActions},
+		{"4", SectionRetroHistory},
+		{"5", SectionCheckHistory},
+	}
+	for _, tt := range tests {
+		result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(tt.key)})
+		m = result.(HomeModel)
+		if m.section != tt.section {
+			t.Errorf("key %q: expected section %d, got %d", tt.key, tt.section, m.section)
+		}
+		if m.cursor != 0 {
+			t.Errorf("key %q: expected cursor reset to 0, got %d", tt.key, m.cursor)
+		}
 	}
 }
 
