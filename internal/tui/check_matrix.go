@@ -265,6 +265,26 @@ func (m CheckMatrixModel) View() string {
 	}
 	b.WriteString(overallRow)
 	b.WriteString("\n\n")
+
+	// Radar chart for selected session
+	if m.colCursor < len(sessions) {
+		selected := sessions[m.colCursor]
+		selName := selected.FullState.Meta.Name
+		if selName == "" {
+			selName = selected.ID
+		}
+		b.WriteString(accent.Render(fmt.Sprintf("  %s", selName)))
+		b.WriteString("\n\n")
+
+		var labels []string
+		var values []float64
+		for _, q := range tmpl.Questions {
+			labels = append(labels, q.Title)
+			values = append(values, medianFromResponses(selected.FullState.SurveyResponses, q.ID))
+		}
+		b.WriteString(widgets.RadarChart(labels, values, maxLevel, 8))
+	}
+
 	b.WriteString(muted.Render("[h/l] select  [Tab] template  [Enter] view  [Esc] back"))
 	b.WriteString("\n")
 
