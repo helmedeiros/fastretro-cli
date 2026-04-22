@@ -7,8 +7,14 @@ Built with [Bubble Tea](https://github.com/charmbracelet/bubbletea) and [Lip Glo
 ## Quick start
 
 ```bash
-go install github.com/helmedeiros/fastretro-cli/cmd/fastretro@latest
+brew install helmedeiros/tap/fastretro
 fastretro
+```
+
+Or with Go:
+
+```bash
+go install github.com/helmedeiros/fastretro-cli/cmd/fastretro@latest
 ```
 
 ## What it does
