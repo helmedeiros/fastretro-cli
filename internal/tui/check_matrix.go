@@ -174,11 +174,37 @@ func (m CheckMatrixModel) View() string {
 		return b.String()
 	}
 
-	// Column headers
+	// Visible session window (max 3)
+	maxVisibleCols := 3
+	colStart := m.colCursor - maxVisibleCols/2
+	if colStart < 0 {
+		colStart = 0
+	}
+	colEnd := colStart + maxVisibleCols
+	if colEnd > len(sessions) {
+		colEnd = len(sessions)
+		colStart = colEnd - maxVisibleCols
+		if colStart < 0 {
+			colStart = 0
+		}
+	}
+	visibleSessions := sessions[colStart:colEnd]
+
+	// Build table as a string block
 	qColWidth := 24
-	cellWidth := 10
+	cellWidth := 12
+	var table strings.Builder
+
+	// Scroll indicator
+	if colStart > 0 {
+		table.WriteString(muted.Render(fmt.Sprintf("  ← %d more", colStart)))
+		table.WriteString("\n")
+	}
+
+	// Column headers
 	header := lipgloss.NewStyle().Width(qColWidth).Render("")
-	for i, s := range sessions {
+	for i, s := range visibleSessions {
+		globalIdx := colStart + i
 		name := s.FullState.Meta.Name
 		if name == "" {
 			name = s.ID
@@ -186,21 +212,20 @@ func (m CheckMatrixModel) View() string {
 		if len(name) > cellWidth-1 {
 			name = name[:cellWidth-2] + ".."
 		}
-
 		colStyle := lipgloss.NewStyle().Width(cellWidth).Align(lipgloss.Center)
-		if i == m.colCursor {
+		if globalIdx == m.colCursor {
 			colStyle = colStyle.Foreground(styles.Accent).Bold(true).Underline(true)
 		} else {
 			colStyle = colStyle.Foreground(styles.Muted)
 		}
 		header += colStyle.Render(name)
 	}
-	b.WriteString(header)
-	b.WriteString("\n")
+	table.WriteString(header + "\n")
 
 	// Date row
 	dateRow := lipgloss.NewStyle().Width(qColWidth).Render("")
-	for i, s := range sessions {
+	for i, s := range visibleSessions {
+		globalIdx := colStart + i
 		date := s.FullState.Meta.Date
 		if date == "" {
 			date = s.CompletedAt
@@ -209,15 +234,13 @@ func (m CheckMatrixModel) View() string {
 			date = date[:10]
 		}
 		colStyle := lipgloss.NewStyle().Width(cellWidth).Align(lipgloss.Center).Foreground(styles.Muted)
-		if i == m.colCursor {
+		if globalIdx == m.colCursor {
 			colStyle = colStyle.Foreground(styles.Accent)
 		}
 		dateRow += colStyle.Render(date)
 	}
-	b.WriteString(dateRow)
-	b.WriteString("\n")
-	b.WriteString(muted.Render(strings.Repeat("─", qColWidth+cellWidth*len(sessions))))
-	b.WriteString("\n")
+	table.WriteString(dateRow + "\n")
+	table.WriteString(muted.Render(strings.Repeat("─", qColWidth+cellWidth*len(visibleSessions))) + "\n")
 
 	// Question rows
 	for _, q := range tmpl.Questions {
@@ -226,8 +249,7 @@ func (m CheckMatrixModel) View() string {
 			title = title[:qColWidth-3] + ".."
 		}
 		row := lipgloss.NewStyle().Width(qColWidth).Render(title)
-
-		for _, s := range sessions {
+		for _, s := range visibleSessions {
 			median := medianFromResponses(s.FullState.SurveyResponses, q.ID)
 			cellText := "—"
 			if median > 0 {
@@ -235,15 +257,13 @@ func (m CheckMatrixModel) View() string {
 			}
 			row += scoreStyle(median, maxLevel).Render(cellText)
 		}
-		b.WriteString(row)
-		b.WriteString("\n")
+		table.WriteString(row + "\n")
 	}
 
 	// Overall score row
-	b.WriteString(muted.Render(strings.Repeat("─", qColWidth+cellWidth*len(sessions))))
-	b.WriteString("\n")
+	table.WriteString(muted.Render(strings.Repeat("─", qColWidth+cellWidth*len(visibleSessions))) + "\n")
 	overallRow := lipgloss.NewStyle().Width(qColWidth).Bold(true).Render("Overall")
-	for _, s := range sessions {
+	for _, s := range visibleSessions {
 		var sum float64
 		var count int
 		for _, q := range tmpl.Questions {
@@ -263,27 +283,28 @@ func (m CheckMatrixModel) View() string {
 		}
 		overallRow += scoreStyle(overall, maxLevel).Render(cellText)
 	}
-	b.WriteString(overallRow)
-	b.WriteString("\n\n")
+	table.WriteString(overallRow + "\n")
 
-	// Radar chart for selected session
+	if colEnd < len(sessions) {
+		table.WriteString(muted.Render(fmt.Sprintf("  → %d more", len(sessions)-colEnd)) + "\n")
+	}
+
+	// Radar chart for selected session — rendered side by side
+	radarStr := ""
 	if m.colCursor < len(sessions) {
 		selected := sessions[m.colCursor]
-		selName := selected.FullState.Meta.Name
-		if selName == "" {
-			selName = selected.ID
-		}
-		b.WriteString(accent.Render(fmt.Sprintf("  %s", selName)))
-		b.WriteString("\n\n")
-
-		var labels []string
-		var values []float64
+		var radarLabels []string
+		var radarValues []float64
 		for _, q := range tmpl.Questions {
-			labels = append(labels, q.Title)
-			values = append(values, medianFromResponses(selected.FullState.SurveyResponses, q.ID))
+			radarLabels = append(radarLabels, q.Title)
+			radarValues = append(radarValues, medianFromResponses(selected.FullState.SurveyResponses, q.ID))
 		}
-		b.WriteString(widgets.RadarChart(labels, values, maxLevel, 8))
+		radarStr = widgets.RadarChart(radarLabels, radarValues, maxLevel, 6)
 	}
+
+	// Join table and radar side by side
+	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, table.String(), "  ", radarStr))
+	b.WriteString("\n")
 
 	b.WriteString(muted.Render("[h/l] select  [Tab] template  [Enter] view  [Esc] back"))
 	b.WriteString("\n")
