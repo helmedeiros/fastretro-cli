@@ -9,12 +9,16 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/helmedeiros/fastretro-cli/internal/client"
 	"github.com/helmedeiros/fastretro-cli/internal/domain"
+	"github.com/helmedeiros/fastretro-cli/internal/server"
 	"github.com/helmedeiros/fastretro-cli/internal/storage"
 	"github.com/helmedeiros/fastretro-cli/internal/tui"
 	"github.com/spf13/cobra"
 )
 
-var serverURL string
+var (
+	serverURL string
+	port      int
+)
 
 func baseDir() string {
 	home, _ := os.UserHomeDir()
@@ -25,6 +29,15 @@ var rootCmd = &cobra.Command{
 	Use:   "fastretro",
 	Short: "Terminal client for fastRetro retrospective sessions",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// Start embedded server if using default (no external server specified)
+		if serverURL == "http://localhost:5173" || serverURL == "" {
+			actualPort, err := server.StartBackground(port)
+			if err != nil {
+				return fmt.Errorf("failed to start server: %w", err)
+			}
+			serverURL = fmt.Sprintf("http://localhost:%d", actualPort)
+		}
+
 		reg := storage.NewJSONRegistryRepo(baseDir())
 		entries, err := reg.List()
 		if err != nil {
@@ -214,7 +227,8 @@ var teamDeleteCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&serverURL, "server", "s", "http://localhost:5173", "Server URL")
+	rootCmd.PersistentFlags().StringVarP(&serverURL, "server", "s", "http://localhost:5173", "Server URL (use external server instead of embedded)")
+	rootCmd.PersistentFlags().IntVarP(&port, "port", "p", 5174, "Embedded server port")
 	teamCmd.AddCommand(teamListCmd, teamCreateCmd, teamSelectCmd, teamDeleteCmd)
 	rootCmd.AddCommand(joinCmd, teamCmd)
 }
