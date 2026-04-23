@@ -29,13 +29,15 @@ var rootCmd = &cobra.Command{
 	Use:   "fastretro",
 	Short: "Terminal client for fastRetro retrospective sessions",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Start embedded server if using default (no external server specified)
-		if serverURL == "http://localhost:5173" || serverURL == "" {
+		// Start embedded server if no external server specified
+		if serverURL == "" {
 			actualPort, err := server.StartBackground(port)
 			if err != nil {
-				return fmt.Errorf("failed to start server: %w", err)
+				// Port in use — another instance is hosting, just connect to it
+				serverURL = fmt.Sprintf("http://localhost:%d", port)
+			} else {
+				serverURL = fmt.Sprintf("http://localhost:%d", actualPort)
 			}
-			serverURL = fmt.Sprintf("http://localhost:%d", actualPort)
 		}
 
 		reg := storage.NewJSONRegistryRepo(baseDir())
@@ -85,6 +87,10 @@ var joinCmd = &cobra.Command{
 	Short: "Join a retrospective session",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// Default to embedded server port if no server specified
+		if serverURL == "" {
+			serverURL = fmt.Sprintf("http://localhost:%d", port)
+		}
 		c, err := client.Connect(args[0], serverURL)
 		if err != nil {
 			return fmt.Errorf("connection failed: %w", err)
@@ -227,7 +233,7 @@ var teamDeleteCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&serverURL, "server", "s", "http://localhost:5173", "Server URL (use external server instead of embedded)")
+	rootCmd.PersistentFlags().StringVarP(&serverURL, "server", "s", "", "Server URL (use external server instead of embedded)")
 	rootCmd.PersistentFlags().IntVarP(&port, "port", "p", 5174, "Embedded server port")
 	teamCmd.AddCommand(teamListCmd, teamCreateCmd, teamSelectCmd, teamDeleteCmd)
 	rootCmd.AddCommand(joinCmd, teamCmd)
