@@ -70,7 +70,6 @@ func (m Model) viewGroup() string {
 	}
 
 	var contents []string
-	var colStyles []lipgloss.Style
 	for ci, col := range columns {
 		items := m.columnGroupItems(col.id)
 		isActive := ci == m.activeCol
@@ -115,34 +114,33 @@ func (m Model) viewGroup() string {
 			lines = append(lines, styles.Subtitle.Render("  (empty)"))
 		}
 
-		muted := lipgloss.NewStyle().Foreground(styles.Muted)
-		header := col.title
-		if isActive {
-			header = styles.Selected.Render("▶ " + header)
-		}
-		if col.description != "" {
-			header += "\n" + muted.Render(col.description) + "\n"
-		}
-
 		body := strings.Join(lines, "\n")
-		content := header + "\n" + body
-
-		contents = append(contents, content)
-		style := styles.Column
-		if isActive {
-			style = style.BorderForeground(styles.Accent)
+		if len(lines) == 0 {
+			body = lipgloss.NewStyle().Foreground(styles.Muted).Render("  (empty)")
 		}
-		colStyles = append(colStyles, style)
+		contents = append(contents, body)
+	}
+
+	boxCfg := widgets.DefaultBoxConfig(styles.Accent, styles.Border)
+	colWidth := styles.Column.GetWidth() + 2
+	maxH := 0
+	for _, c := range contents {
+		if h := widgets.ContentHeight(c); h > maxH {
+			maxH = h
+		}
 	}
 
 	maxVisibleCols := 3
-	colStart, colEnd := widgets.ScrollWindow(len(contents), m.activeCol, maxVisibleCols)
-	board := widgets.JoinColumnsEqualHeight(contents[colStart:colEnd], colStyles[colStart:colEnd])
-
-	if len(columns) > maxVisibleCols {
-		muted := lipgloss.NewStyle().Foreground(styles.Muted)
-		board += "\n" + muted.Render(fmt.Sprintf("  column %d of %d", m.activeCol+1, len(columns)))
+	colStart, colEnd := widgets.ScrollWindow(len(columns), m.activeCol, maxVisibleCols)
+	var boxes []string
+	for i := colStart; i < colEnd; i++ {
+		col := columns[i]
+		itemCount := len(m.columnGroupItems(col.id))
+		title := fmt.Sprintf("[%d] %s", i+1, col.title)
+		bottom := fmt.Sprintf("%d items", itemCount)
+		boxes = append(boxes, widgets.TitledBox(boxCfg, title, contents[i], bottom, colWidth, maxH, i == m.activeCol))
 	}
+	board := lipgloss.JoinHorizontal(lipgloss.Top, boxes...)
 
 	var help string
 	if m.inputMode {
@@ -185,6 +183,12 @@ func (m Model) handleGroupKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "shift+tab", "left", "h":
 		if len(columns) > 0 {
 			m.activeCol = (m.activeCol - 1 + len(columns)) % len(columns)
+			m.cursor = 0
+		}
+	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
+		idx := int(msg.String()[0]-'0') - 1
+		if idx < len(columns) {
+			m.activeCol = idx
 			m.cursor = 0
 		}
 	case "m":

@@ -124,8 +124,8 @@ func TestViewVote_ActiveColumn(t *testing.T) {
 	m := testVoteModel()
 	view := m.viewVote()
 
-	if !strings.Contains(view, "▶") {
-		t.Error("expected active column indicator")
+	if !strings.Contains(view, "[1]") {
+		t.Error("expected numbered column title")
 	}
 }
 

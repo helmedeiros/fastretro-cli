@@ -165,8 +165,8 @@ func TestViewGroup_ActiveColumnHighlight(t *testing.T) {
 	m.activeCol = 0
 	view := m.viewGroup()
 
-	if !strings.Contains(view, "▶") {
-		t.Error("expected active column indicator")
+	if !strings.Contains(view, "[1]") {
+		t.Error("expected numbered column title")
 	}
 }
 

@@ -164,8 +164,8 @@ func TestViewBrainstorm_ActiveColumn(t *testing.T) {
 	m.activeCol = 0
 	view := m.viewBrainstorm()
 
-	if !strings.Contains(view, "▶") {
-		t.Error("expected active column indicator")
+	if !strings.Contains(view, "[1]") {
+		t.Error("expected numbered column title")
 	}
 }
 

@@ -54,7 +54,6 @@ func (m Model) viewVote() string {
 
 	columns := m.getColumns()
 	var contents []string
-	var colStyles []lipgloss.Style
 
 	for ci, col := range columns {
 		items := m.columnVoteItems(col.id)
@@ -91,35 +90,33 @@ func (m Model) viewVote() string {
 			}
 		}
 
-		header := col.title
-		if isActive {
-			header = styles.Selected.Render("▶ " + header)
-		}
-		if col.description != "" {
-			header += "\n" + muted.Render(col.description) + "\n"
-		}
-
 		body := strings.Join(lines, "\n")
 		if len(lines) == 0 {
 			body = muted.Render("  (no items)")
 		}
-
-		contents = append(contents, header+"\n"+body)
-		style := styles.Column
-		if isActive {
-			style = style.BorderForeground(styles.Accent)
-		}
-		colStyles = append(colStyles, style)
+		contents = append(contents, body)
 	}
 
 	if len(contents) > 0 {
-		maxVisibleCols := 3
-		colStart, colEnd := widgets.ScrollWindow(len(contents), m.activeCol, maxVisibleCols)
-		b.WriteString(widgets.JoinColumnsEqualHeight(contents[colStart:colEnd], colStyles[colStart:colEnd]))
-		if len(contents) > maxVisibleCols {
-			b.WriteString("\n")
-			b.WriteString(muted.Render(fmt.Sprintf("  column %d of %d", m.activeCol+1, len(contents))))
+		boxCfg := widgets.DefaultBoxConfig(styles.Accent, styles.Border)
+		colWidth := styles.Column.GetWidth() + 2
+		maxH := 0
+		for _, c := range contents {
+			if h := widgets.ContentHeight(c); h > maxH {
+				maxH = h
+			}
 		}
+		maxVisibleCols := 3
+		colStart, colEnd := widgets.ScrollWindow(len(columns), m.activeCol, maxVisibleCols)
+		var boxes []string
+		for i := colStart; i < colEnd; i++ {
+			col := columns[i]
+			itemCount := len(m.columnVoteItems(col.id))
+			title := fmt.Sprintf("[%d] %s", i+1, col.title)
+			bottom := fmt.Sprintf("%d items", itemCount)
+			boxes = append(boxes, widgets.TitledBox(boxCfg, title, contents[i], bottom, colWidth, maxH, i == m.activeCol))
+		}
+		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, boxes...))
 	}
 
 	b.WriteString("\n\n")
@@ -153,6 +150,12 @@ func (m Model) handleVoteKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "shift+tab", "left", "h":
 		if len(columns) > 0 {
 			m.activeCol = (m.activeCol - 1 + len(columns)) % len(columns)
+			m.cursor = 0
+		}
+	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
+		idx := int(msg.String()[0]-'0') - 1
+		if idx < len(columns) {
+			m.activeCol = idx
 			m.cursor = 0
 		}
 	case "enter", " ":

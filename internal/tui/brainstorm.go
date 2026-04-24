@@ -65,7 +65,6 @@ func (m Model) viewBrainstorm() string {
 	}
 
 	var contents []string
-	var colStyles []lipgloss.Style
 	for ci, col := range columns {
 		items := m.columnBrainstormItems(col.id)
 		isActive := ci == m.activeCol
@@ -117,14 +116,6 @@ func (m Model) viewBrainstorm() string {
 			}
 		}
 
-		header := col.title
-		if isActive {
-			header = styles.Selected.Render("▶ " + header)
-		}
-		if col.description != "" {
-			header += "\n" + muted.Render(col.description) + "\n"
-		}
-
 		body := strings.Join(lines, "\n")
 		if len(lines) == 0 {
 			body = muted.Render("  (empty)")
@@ -134,25 +125,34 @@ func (m Model) viewBrainstorm() string {
 			body += fmt.Sprintf("\n\n  Add: %s▌", m.inputText)
 		}
 
-		content := header + "\n" + body
-		contents = append(contents, content)
-		style := styles.Column
-		if isActive {
-			style = style.BorderForeground(styles.Accent)
+		contents = append(contents, body)
+	}
+
+	// Render titled boxes with number keys
+	boxCfg := widgets.DefaultBoxConfig(styles.Accent, styles.Border)
+	colWidth := styles.Column.GetWidth() + 2
+
+	// Compute equal height
+	maxH := 0
+	for _, c := range contents {
+		if h := widgets.ContentHeight(c); h > maxH {
+			maxH = h
 		}
-		colStyles = append(colStyles, style)
 	}
 
-	// Show sliding window of columns centered on active
+	// Show sliding window centered on active
 	maxVisibleCols := 3
-	colStart, colEnd := widgets.ScrollWindow(len(contents), m.activeCol, maxVisibleCols)
-	board := widgets.JoinColumnsEqualHeight(contents[colStart:colEnd], colStyles[colStart:colEnd])
+	colStart, colEnd := widgets.ScrollWindow(len(columns), m.activeCol, maxVisibleCols)
 
-	// Column position indicator
-	if len(columns) > maxVisibleCols {
-		indicator := muted.Render(fmt.Sprintf("  column %d of %d", m.activeCol+1, len(columns)))
-		board += "\n" + indicator
+	var boxes []string
+	for i := colStart; i < colEnd; i++ {
+		col := columns[i]
+		itemCount := len(m.columnBrainstormItems(col.id))
+		title := fmt.Sprintf("[%d] %s", i+1, col.title)
+		bottom := fmt.Sprintf("%d items", itemCount)
+		boxes = append(boxes, widgets.TitledBox(boxCfg, title, contents[i], bottom, colWidth, maxH, i == m.activeCol))
 	}
+	board := lipgloss.JoinHorizontal(lipgloss.Top, boxes...)
 
 	help := "[j/k] navigate  [h/l] column  [a] add  [d] delete  [q] back"
 	if m.inputMode {
@@ -191,6 +191,12 @@ func (m Model) handleBrainstormKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "shift+tab", "left", "h":
 		if len(columns) > 0 {
 			m.activeCol = (m.activeCol - 1 + len(columns)) % len(columns)
+			m.cursor = 0
+		}
+	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
+		idx := int(msg.String()[0]-'0') - 1
+		if idx < len(columns) {
+			m.activeCol = idx
 			m.cursor = 0
 		}
 	case "a":
