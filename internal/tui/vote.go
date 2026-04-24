@@ -113,7 +113,13 @@ func (m Model) viewVote() string {
 	}
 
 	if len(contents) > 0 {
-		b.WriteString(widgets.JoinColumnsEqualHeight(contents, colStyles))
+		maxVisibleCols := 3
+		colStart, colEnd := widgets.ScrollWindow(len(contents), m.activeCol, maxVisibleCols)
+		b.WriteString(widgets.JoinColumnsEqualHeight(contents[colStart:colEnd], colStyles[colStart:colEnd]))
+		if len(contents) > maxVisibleCols {
+			b.WriteString("\n")
+			b.WriteString(muted.Render(fmt.Sprintf("  column %d of %d", m.activeCol+1, len(contents))))
+		}
 	}
 
 	b.WriteString("\n\n")

@@ -135,7 +135,14 @@ func (m Model) viewGroup() string {
 		colStyles = append(colStyles, style)
 	}
 
-	board := widgets.JoinColumnsEqualHeight(contents, colStyles)
+	maxVisibleCols := 3
+	colStart, colEnd := widgets.ScrollWindow(len(contents), m.activeCol, maxVisibleCols)
+	board := widgets.JoinColumnsEqualHeight(contents[colStart:colEnd], colStyles[colStart:colEnd])
+
+	if len(columns) > maxVisibleCols {
+		muted := lipgloss.NewStyle().Foreground(styles.Muted)
+		board += "\n" + muted.Render(fmt.Sprintf("  column %d of %d", m.activeCol+1, len(columns)))
+	}
 
 	var help string
 	if m.inputMode {

@@ -143,7 +143,16 @@ func (m Model) viewBrainstorm() string {
 		colStyles = append(colStyles, style)
 	}
 
-	board := widgets.JoinColumnsEqualHeight(contents, colStyles)
+	// Show sliding window of columns centered on active
+	maxVisibleCols := 3
+	colStart, colEnd := widgets.ScrollWindow(len(contents), m.activeCol, maxVisibleCols)
+	board := widgets.JoinColumnsEqualHeight(contents[colStart:colEnd], colStyles[colStart:colEnd])
+
+	// Column position indicator
+	if len(columns) > maxVisibleCols {
+		indicator := muted.Render(fmt.Sprintf("  column %d of %d", m.activeCol+1, len(columns)))
+		board += "\n" + indicator
+	}
 
 	help := "[j/k] navigate  [h/l] column  [a] add  [d] delete  [q] back"
 	if m.inputMode {
