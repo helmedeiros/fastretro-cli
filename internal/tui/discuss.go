@@ -149,23 +149,30 @@ func (m Model) viewDiscuss() string {
 	contextNotes := m.notesForItem(currentID, "context")
 	actionNotes := m.notesForItem(currentID, "actions")
 
-	contextCol := m.renderNoteLane("CONTEXT", contextNotes, segment == "context")
-	actionsCol := m.renderNoteLane("ACTIONS", actionNotes, segment == "actions")
+	contextContent := m.renderNoteLane("", contextNotes, segment == "context")
+	actionsContent := m.renderNoteLane("", actionNotes, segment == "actions")
 
-	colStyle := styles.Column
-	activeColStyle := colStyle.BorderForeground(styles.Accent)
-
-	var laneContents []string
-	var laneStyles []lipgloss.Style
-	if segment == "context" {
-		laneContents = []string{contextCol, actionsCol}
-		laneStyles = []lipgloss.Style{activeColStyle, colStyle}
-	} else {
-		laneContents = []string{contextCol, actionsCol}
-		laneStyles = []lipgloss.Style{colStyle, activeColStyle}
+	boxCfg := widgets.DefaultBoxConfig(styles.Accent, styles.Border)
+	colWidth := styles.Column.GetWidth() + 2
+	maxH := widgets.ContentHeight(contextContent)
+	if h := widgets.ContentHeight(actionsContent); h > maxH {
+		maxH = h
 	}
 
-	b.WriteString(widgets.JoinColumnsEqualHeight(laneContents, laneStyles))
+	contextTitle := "[1] CONTEXT"
+	actionsTitle := "[2] ACTIONS"
+	contextBottom := fmt.Sprintf("%d notes", len(contextNotes))
+	actionsBottom := fmt.Sprintf("%d notes", len(actionNotes))
+
+	if isCheck {
+		// Check mode: no context lane, just actions
+		actionsBox := widgets.TitledBox(boxCfg, actionsTitle, actionsContent, actionsBottom, colWidth*2, 0, true)
+		b.WriteString(actionsBox)
+	} else {
+		contextBox := widgets.TitledBox(boxCfg, contextTitle, contextContent, contextBottom, colWidth, maxH, segment == "context")
+		actionsBox := widgets.TitledBox(boxCfg, actionsTitle, actionsContent, actionsBottom, colWidth, maxH, segment == "actions")
+		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, contextBox, actionsBox))
+	}
 	b.WriteString("\n")
 
 	// Input mode
@@ -191,14 +198,17 @@ func (m Model) renderNoteLane(title string, notes []noteEntry, active bool) stri
 	var lines []string
 	maxTextWidth := styles.Column.GetWidth() - 4 // padding + cursor prefix
 
-	var header string
-	if active {
-		header = styles.Selected.Render(title)
-	} else {
-		header = styles.Subtitle.Render(title)
+	// Only render inline header if title is provided (backward compat)
+	if title != "" {
+		var header string
+		if active {
+			header = styles.Selected.Render(title)
+		} else {
+			header = styles.Subtitle.Render(title)
+		}
+		lines = append(lines, header)
+		lines = append(lines, "")
 	}
-	lines = append(lines, header)
-	lines = append(lines, "")
 
 	if len(notes) == 0 {
 		lines = append(lines, styles.Subtitle.Render("(empty)"))
