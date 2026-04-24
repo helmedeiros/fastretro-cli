@@ -274,6 +274,14 @@ func (m Model) handleDiscussKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.state.Discuss.Segment = "context"
 		}
 		m.cursor = 0
+	case "1":
+		if m.state.Meta.Type != "check" {
+			m.state.Discuss.Segment = "context"
+			m.cursor = 0
+		}
+	case "2":
+		m.state.Discuss.Segment = "actions"
+		m.cursor = 0
 	case "left", "h":
 		if segment == "actions" {
 			m.state.Discuss.Segment = "context"
