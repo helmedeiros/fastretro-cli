@@ -108,14 +108,45 @@ var joinCmd = &cobra.Command{
 			}
 		}
 
+		// Set default member name for auto-matching
+		defaultName := reg.LoadDefaultMember()
+		model.SetDefaultMemberName(defaultName)
+
 		p := tea.NewProgram(model, tea.WithAltScreen())
 		result, err := p.Run()
+		if err != nil {
+			return err
+		}
 
 		// Persist identity for next reconnect
 		if m, ok := result.(tui.Model); ok && m.ParticipantID() != "" {
 			_ = reg.SaveIdentity(c.RoomCode, m.ParticipantID())
 		}
 
+		// After session ends, launch full shell (home screen)
+		// This resolves/creates the team and saves history
+		entries, _ := reg.List()
+		selectedID, _ := reg.SelectedTeamID()
+		var entry domain.TeamEntry
+		if selectedID != "" {
+			for _, e := range entries {
+				if e.ID == selectedID {
+					entry = e
+					break
+				}
+			}
+		}
+		if entry.ID == "" && len(entries) > 0 {
+			entry = entries[0]
+		}
+
+		shell := tui.NewShellModel(reg, entry, serverURL)
+		if entry.ID == "" {
+			shell.StartInTeamSelect()
+		}
+
+		p2 := tea.NewProgram(shell, tea.WithAltScreen())
+		_, err = p2.Run()
 		return err
 	},
 }

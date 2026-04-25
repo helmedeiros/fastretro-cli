@@ -86,6 +86,11 @@ func (m Model) ParticipantID() string {
 	return m.participantID
 }
 
+// SetDefaultMemberName sets the name to auto-match when state arrives.
+func (m *Model) SetDefaultMemberName(name string) {
+	m.defaultMemberName = name
+}
+
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(
 		listenWS(m.client),
