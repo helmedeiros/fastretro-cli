@@ -63,16 +63,42 @@ func (m Model) viewReview() string {
 		}
 	}
 
-	// --- Owner assignment input ---
-	if m.inputMode {
-		b.WriteString(fmt.Sprintf("  Assign owner: %s▌\n", m.inputText))
-		b.WriteString(muted.Render("  Participants: "))
-		var names []string
-		for _, p := range m.state.Participants {
-			names = append(names, p.Name)
-		}
-		b.WriteString(muted.Render(strings.Join(names, ", ")))
+	// --- Participant picker ---
+	if m.reviewPickMode {
+		b.WriteString(accent.Render("  Select owner:"))
 		b.WriteString("\n")
+		for i, p := range m.state.Participants {
+			cursor := "    "
+			if i == m.reviewPickCursor {
+				cursor = "  > "
+			}
+			line := cursor + p.Name
+			if i == m.reviewPickCursor {
+				b.WriteString(styles.Selected.Render(line))
+			} else {
+				b.WriteString(line)
+			}
+			b.WriteString("\n")
+		}
+		// Option to type a new name
+		newCursor := "    "
+		if m.reviewPickCursor == len(m.state.Participants) {
+			newCursor = "  > "
+		}
+		newLine := newCursor + "(type new name...)"
+		if m.reviewPickCursor == len(m.state.Participants) {
+			b.WriteString(styles.Selected.Render(newLine))
+		} else {
+			b.WriteString(muted.Render(newLine))
+		}
+		b.WriteString("\n")
+		b.WriteString(muted.Render("  [j/k] select  [Enter] confirm  [Esc] cancel"))
+		b.WriteString("\n")
+	}
+
+	// --- Manual name input ---
+	if m.inputMode {
+		b.WriteString(fmt.Sprintf("  Owner name: %s▌\n", m.inputText))
 		b.WriteString(muted.Render("  [Enter] save  [Esc] cancel"))
 		b.WriteString("\n")
 	}
@@ -122,7 +148,7 @@ func (m Model) viewReview() string {
 	}
 
 	// Help
-	if !m.inputMode {
+	if !m.inputMode && !m.reviewPickMode {
 		b.WriteString("\n")
 		b.WriteString(muted.Render("[j/k] navigate  [a] assign owner  [q] back"))
 	}
@@ -133,6 +159,9 @@ func (m Model) viewReview() string {
 func (m Model) handleReviewKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.inputMode {
 		return m.handleReviewInput(msg)
+	}
+	if m.reviewPickMode {
+		return m.handleReviewPick(msg)
 	}
 
 	actions := m.actionNotes()
@@ -147,10 +176,50 @@ func (m Model) handleReviewKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.cursor++
 		}
 	case "a":
-		if m.cursor < len(actions) {
+		if m.cursor < len(actions) && m.state != nil {
+			m.reviewPickMode = true
+			m.reviewPickCursor = 0
+		}
+	}
+	return m, nil
+}
+
+func (m Model) handleReviewPick(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.state == nil {
+		return m, nil
+	}
+	maxIdx := len(m.state.Participants) // last entry is "type new name"
+
+	switch msg.String() {
+	case "up", "k":
+		if m.reviewPickCursor > 0 {
+			m.reviewPickCursor--
+		}
+	case "down", "j":
+		if m.reviewPickCursor < maxIdx {
+			m.reviewPickCursor++
+		}
+	case "enter":
+		if m.reviewPickCursor < len(m.state.Participants) {
+			// Selected an existing participant
+			p := m.state.Participants[m.reviewPickCursor]
+			actions := m.actionNotes()
+			if m.cursor < len(actions) {
+				if m.state.ActionOwners == nil {
+					m.state.ActionOwners = make(map[string]string)
+				}
+				m.state.ActionOwners[actions[m.cursor].id] = p.ID
+				m.broadcastState()
+			}
+			m.reviewPickMode = false
+		} else {
+			// "Type new name" selected — switch to text input
+			m.reviewPickMode = false
 			m.inputMode = true
 			m.inputText = ""
 		}
+	case "esc":
+		m.reviewPickMode = false
 	}
 	return m, nil
 }

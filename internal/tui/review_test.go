@@ -113,14 +113,11 @@ func TestViewReview_InputMode(t *testing.T) {
 	m.inputText = "Bob"
 	view := m.viewReview()
 
-	if !strings.Contains(view, "Assign owner") {
-		t.Error("expected assign prompt")
+	if !strings.Contains(view, "Owner name") {
+		t.Error("expected owner name prompt")
 	}
 	if !strings.Contains(view, "Bob") {
 		t.Error("expected input text")
-	}
-	if !strings.Contains(view, "Alice") && !strings.Contains(view, "Participants") {
-		t.Error("expected participant list hint")
 	}
 }
 
@@ -195,8 +192,8 @@ func TestHandleReviewKeys_AssignOwner(t *testing.T) {
 	result, _ := m.handleReviewKeys(keyMsg("a"))
 	model := result.(Model)
 
-	if !model.inputMode {
-		t.Error("expected input mode")
+	if !model.reviewPickMode {
+		t.Error("expected pick mode")
 	}
 }
 
@@ -370,7 +367,7 @@ func TestHandleKey_ReviewStage(t *testing.T) {
 	m := testReviewModel()
 	result, _ := m.handleKey(keyMsg("a"))
 	model := result.(Model)
-	if !model.inputMode {
-		t.Error("expected review key handler")
+	if !model.reviewPickMode {
+		t.Error("expected review pick mode")
 	}
 }

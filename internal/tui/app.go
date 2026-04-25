@@ -54,6 +54,8 @@ type Model struct {
 	cursor            int
 	inputText         string
 	inputMode         bool
+	reviewPickMode    bool // true when showing participant picker
+	reviewPickCursor  int  // cursor within participant list
 	activeCol         int
 	mergeSource       string // card ID selected as merge source
 	teamInfo          *protocol.SyncTeamInfo

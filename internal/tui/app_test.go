@@ -393,8 +393,8 @@ func TestHandleKey_ReviewStage_InKeys(t *testing.T) {
 	result, _ := m.handleKey(keyMsg("a"))
 	model := result.(Model)
 
-	if !model.inputMode {
-		t.Error("expected review handler")
+	if !model.reviewPickMode {
+		t.Error("expected review pick mode")
 	}
 }
 
