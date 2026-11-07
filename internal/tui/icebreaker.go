@@ -39,7 +39,7 @@ func (m Model) viewIcebreaker() string {
 	if !allDone {
 		pid := ib.ParticipantIDs[ib.CurrentIndex]
 		name := m.participantName(pid)
-		b.WriteString(fmt.Sprintf("  Answering: %s", accent.Render(name)))
+		fmt.Fprintf(&b, "  Answering: %s", accent.Render(name))
 		b.WriteString("\n")
 	} else {
 		b.WriteString(accent.Render("  Icebreaker complete!"))
@@ -52,8 +52,8 @@ func (m Model) viewIcebreaker() string {
 		if allDone {
 			round = len(ib.ParticipantIDs)
 		}
-		b.WriteString(fmt.Sprintf("\n  %s\n\n", muted.Render(
-			fmt.Sprintf("Round %d of %d", round, len(ib.ParticipantIDs)))))
+		fmt.Fprintf(&b, "\n  %s\n\n", muted.Render(
+			fmt.Sprintf("Round %d of %d", round, len(ib.ParticipantIDs))))
 		for i, pid := range ib.ParticipantIDs {
 			name := m.participantName(pid)
 			if i == ib.CurrentIndex {
@@ -61,7 +61,7 @@ func (m Model) viewIcebreaker() string {
 			} else if i < ib.CurrentIndex {
 				b.WriteString(muted.Render(fmt.Sprintf("    %s (done)", name)))
 			} else {
-				b.WriteString(fmt.Sprintf("    %s", name))
+				fmt.Fprintf(&b, "    %s", name)
 			}
 			b.WriteString("\n")
 		}

@@ -35,7 +35,7 @@ func BarChart(labels []string, values []float64, maxValue, barWidth int) string 
 		if values[i] > 0 {
 			score = fmt.Sprintf("%.1f", values[i])
 		}
-		b.WriteString(fmt.Sprintf("  %s  %s  %s\n", padded, bar, score))
+		fmt.Fprintf(&b, "  %s  %s  %s\n", padded, bar, score)
 	}
 	return b.String()
 }
