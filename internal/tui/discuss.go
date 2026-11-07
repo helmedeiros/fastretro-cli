@@ -137,7 +137,7 @@ func (m Model) viewDiscuss() string {
 	} else {
 		nextLabel = accent.Render(nextLabel)
 	}
-	b.WriteString(fmt.Sprintf("  %s       %s", prevLabel, nextLabel))
+	fmt.Fprintf(&b, "  %s       %s", prevLabel, nextLabel)
 	b.WriteString("\n\n")
 
 	// Context & Actions side by side
@@ -178,7 +178,7 @@ func (m Model) viewDiscuss() string {
 	// Input mode
 	if m.inputMode {
 		laneLabel := segment
-		b.WriteString(fmt.Sprintf("\n  Add %s: %s▌\n", laneLabel, m.inputText))
+		fmt.Fprintf(&b, "\n  Add %s: %s▌\n", laneLabel, m.inputText)
 		b.WriteString(styles.StatusBar.Render("[Enter] save  [Esc] cancel"))
 	} else {
 		// Timer

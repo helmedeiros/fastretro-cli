@@ -407,7 +407,7 @@ func (m HomeModel) View() string {
 	// Input or help
 	if m.inputMode {
 		label := m.inputAction
-		b.WriteString(fmt.Sprintf("\n  %s: %s▌\n", label, m.inputText))
+		fmt.Fprintf(&b, "\n  %s: %s▌\n", label, m.inputText)
 		b.WriteString(muted.Render("  [Enter] save  [Esc] cancel"))
 	} else {
 		b.WriteString("\n")
@@ -668,13 +668,13 @@ func (m HomeModel) renderFilteredHistory(items []domain.CompletedRetro, isActive
 			nameRendered = accent.Render(name)
 		}
 
-		b.WriteString(fmt.Sprintf("%s%s\n", cursor, nameRendered))
+		fmt.Fprintf(&b, "%s%s\n", cursor, nameRendered)
 		if date != "" {
-			b.WriteString(fmt.Sprintf("  %s  %s\n", dim.Render(date), dim.Render(templateLine)))
+			fmt.Fprintf(&b, "  %s  %s\n", dim.Render(date), dim.Render(templateLine))
 		} else {
-			b.WriteString(fmt.Sprintf("  %s\n", dim.Render(templateLine)))
+			fmt.Fprintf(&b, "  %s\n", dim.Render(templateLine))
 		}
-		b.WriteString(fmt.Sprintf("  %s\n", dim.Render(statsLine)))
+		fmt.Fprintf(&b, "  %s\n", dim.Render(statsLine))
 		if i < end-1 {
 			b.WriteString("\n")
 		}

@@ -47,7 +47,7 @@ func (m Model) viewSurvey() string {
 			if response != nil && response.Rating == opt.Value {
 				b.WriteString(styles.VoteBadge.Render(fmt.Sprintf("[%s]", opt.Label)))
 			} else {
-				b.WriteString(fmt.Sprintf(" %s ", opt.Label))
+				fmt.Fprintf(&b, " %s ", opt.Label)
 			}
 			b.WriteString(" ")
 		}

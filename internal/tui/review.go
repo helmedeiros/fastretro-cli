@@ -98,7 +98,7 @@ func (m Model) viewReview() string {
 
 	// --- Manual name input ---
 	if m.inputMode {
-		b.WriteString(fmt.Sprintf("  Owner name: %s▌\n", m.inputText))
+		fmt.Fprintf(&b, "  Owner name: %s▌\n", m.inputText)
 		b.WriteString(muted.Render("  [Enter] save  [Esc] cancel"))
 		b.WriteString("\n")
 	}

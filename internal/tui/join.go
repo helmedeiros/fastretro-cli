@@ -45,7 +45,7 @@ func (m Model) viewJoin() string {
 			} else if i == m.cursor {
 				b.WriteString(styles.Selected.Render(fmt.Sprintf("%s%s", cursor, p.Name)))
 			} else {
-				b.WriteString(fmt.Sprintf("%s%s", cursor, p.Name))
+				fmt.Fprintf(&b, "%s%s", cursor, p.Name)
 			}
 			b.WriteString("\n")
 		}
@@ -53,7 +53,7 @@ func (m Model) viewJoin() string {
 
 	b.WriteString("\n")
 	if m.inputMode {
-		b.WriteString(fmt.Sprintf("  New name: %s▌", m.inputText))
+		fmt.Fprintf(&b, "  New name: %s▌", m.inputText)
 	} else {
 		b.WriteString("  [j/k] navigate  [Enter] select  [a] add name  [q] back")
 	}

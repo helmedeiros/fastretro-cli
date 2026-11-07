@@ -47,9 +47,9 @@ func (m Model) viewVote() string {
 
 	remaining := m.votesRemaining()
 	name := m.participantName(m.participantID)
-	b.WriteString(fmt.Sprintf("  Voting as: %s  %s",
+	fmt.Fprintf(&b, "  Voting as: %s  %s",
 		accent.Render(name),
-		muted.Render(fmt.Sprintf("(%d/%d votes left)", remaining, m.state.VoteBudget))))
+		muted.Render(fmt.Sprintf("(%d/%d votes left)", remaining, m.state.VoteBudget)))
 	b.WriteString("\n\n")
 
 	columns := m.getColumns()

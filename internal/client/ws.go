@@ -193,8 +193,7 @@ func isRoomCode(s string) bool {
 		return false
 	}
 	for _, c := range s {
-		if !((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' ||
-			(c >= 'a' && c <= 'z')) {
+		if (c < 'A' || c > 'Z') && (c < '0' || c > '9') && c != '-' && (c < 'a' || c > 'z') {
 			return false
 		}
 	}

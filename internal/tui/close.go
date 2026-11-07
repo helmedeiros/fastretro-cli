@@ -27,19 +27,19 @@ func (m Model) viewClose() string {
 	b.WriteString(muted.Render("────────────────────────────────────────"))
 	b.WriteString("\n\n")
 
-	b.WriteString(fmt.Sprintf("  Participants: %s\n", accent.Render(fmt.Sprintf("%d", len(m.state.Participants)))))
+	fmt.Fprintf(&b, "  Participants: %s\n", accent.Render(fmt.Sprintf("%d", len(m.state.Participants))))
 
 	if isCheck {
 		tmpl := protocol.GetCheckTemplate(m.state.Meta.TemplateID)
-		b.WriteString(fmt.Sprintf("  Questions:    %s\n", accent.Render(fmt.Sprintf("%d", len(tmpl.Questions)))))
+		fmt.Fprintf(&b, "  Questions:    %s\n", accent.Render(fmt.Sprintf("%d", len(tmpl.Questions))))
 	} else {
-		b.WriteString(fmt.Sprintf("  Cards:        %s\n", accent.Render(fmt.Sprintf("%d", len(m.state.Cards)))))
-		b.WriteString(fmt.Sprintf("  Groups:       %s\n", accent.Render(fmt.Sprintf("%d", len(m.state.Groups)))))
-		b.WriteString(fmt.Sprintf("  Votes cast:   %s\n", accent.Render(fmt.Sprintf("%d", len(m.state.Votes)))))
+		fmt.Fprintf(&b, "  Cards:        %s\n", accent.Render(fmt.Sprintf("%d", len(m.state.Cards))))
+		fmt.Fprintf(&b, "  Groups:       %s\n", accent.Render(fmt.Sprintf("%d", len(m.state.Groups))))
+		fmt.Fprintf(&b, "  Votes cast:   %s\n", accent.Render(fmt.Sprintf("%d", len(m.state.Votes))))
 	}
 
 	actions := m.actionNotes()
-	b.WriteString(fmt.Sprintf("  Action items: %s\n", accent.Render(fmt.Sprintf("%d", len(actions)))))
+	fmt.Fprintf(&b, "  Action items: %s\n", accent.Render(fmt.Sprintf("%d", len(actions))))
 
 	// Action items
 	if len(actions) > 0 {
@@ -56,8 +56,8 @@ func (m Model) viewClose() string {
 				ownerStr = muted.Render(m.participantName(owner))
 			}
 			checkmark := accent.Render("✓")
-			b.WriteString(fmt.Sprintf("  %s %d. %s\n", checkmark, i+1, a.text))
-			b.WriteString(fmt.Sprintf("      %s\n\n", ownerStr))
+			fmt.Fprintf(&b, "  %s %d. %s\n", checkmark, i+1, a.text)
+			fmt.Fprintf(&b, "      %s\n\n", ownerStr)
 		}
 	}
 
@@ -75,7 +75,7 @@ func (m Model) viewClose() string {
 			if median > 0 {
 				scoreStr = fmt.Sprintf("%.1f", median)
 			}
-			b.WriteString(fmt.Sprintf("  %s  %s\n", accent.Render(scoreStr), q.Title))
+			fmt.Fprintf(&b, "  %s  %s\n", accent.Render(scoreStr), q.Title)
 		}
 	} else {
 		// Board overview
